@@ -60,7 +60,8 @@ configured (useful while tuning `min_score`). Run with
 
 ## Running it on a schedule
 
-`.github/workflows/job-bot.yml` runs this daily via GitHub Actions
+`.github/workflows/job-bot.yml` (at the repo root — GitHub only discovers
+workflow files there, not in subdirectories) runs this daily via GitHub Actions
 (free on a personal repo) and uploads the report/drafts as a downloadable
 artifact each run. To enable email from Actions, add these as repo
 secrets (Settings -> Secrets and variables -> Actions):
