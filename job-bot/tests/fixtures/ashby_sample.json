@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    {
+      "id": "xyz-1",
+      "title": "Cloud Data Engineer",
+      "location": "Remote",
+      "jobUrl": "https://jobs.ashbyhq.com/acme/xyz-1",
+      "descriptionPlain": "Work with AWS S3, Glue, Redshift, and Airflow to build data pipelines.",
+      "publishedAt": "2026-08-01T00:00:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+name: Job bot
+
+on:
+  schedule:
+    # 03:00 UTC daily = 08:30 IST
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore state (seen jobs, past reports/drafts)
+        uses: actions/cache@v4
+        with:
+          path: job-bot/data
+          key: job-bot-state-${{ github.run_id }}
+          restore-keys: |
+            job-bot-state-
+
+      - name: Install dependencies
+        working-directory: job-bot
+        run: pip install -r requirements.txt
+
+      - name: Run job bot
+        working-directory: job-bot
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+        run: python -m src.main run
+
+      - name: Upload report + drafts as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-bot-output-${{ github.run_id }}
+          path: |
+            job-bot/data/reports
+            job-bot/data/drafts
+          retention-days: 14

@@ -1,0 +1,107 @@
+# Companies the bot actively fetches openings from via public job-board
+# JSON APIs (no login, no scraping of rendered HTML, no ToS violation --
+# these endpoints are published by the ATS vendors for exactly this
+# purpose). Each entry needs the ATS type and the company's board slug.
+#
+# Slugs occasionally change when a company migrates ATS providers. If a
+# company returns zero jobs for a while, open board_url_hint once in a
+# browser to confirm the slug is still correct.
+#
+# To add a company: find its careers page, look at the URL.
+#   boards.greenhouse.io/<slug>            -> ats: greenhouse
+#   jobs.lever.co/<slug>                   -> ats: lever
+#   jobs.ashbyhq.com/<slug>                -> ats: ashby
+#   jobs.smartrecruiters.com/<Slug>/...    -> ats: smartrecruiters
+
+companies:
+  - name: "Airbnb"
+    ats: greenhouse
+    slug: airbnb
+  - name: "Stripe"
+    ats: greenhouse
+    slug: stripe
+  - name: "DoorDash"
+    ats: greenhouse
+    slug: doordash
+  - name: "Coinbase"
+    ats: greenhouse
+    slug: coinbase
+  - name: "Robinhood"
+    ats: greenhouse
+    slug: robinhood
+  - name: "Reddit"
+    ats: greenhouse
+    slug: reddit
+  - name: "Discord"
+    ats: greenhouse
+    slug: discord
+  - name: "Pinterest"
+    ats: greenhouse
+    slug: pinterest
+  - name: "GitLab"
+    ats: greenhouse
+    slug: gitlab
+  - name: "Databricks"
+    ats: greenhouse
+    slug: databricks
+  - name: "Figma"
+    ats: greenhouse
+    slug: figma
+  - name: "Netflix"
+    ats: lever
+    slug: netflix
+  - name: "Palantir"
+    ats: lever
+    slug: palantir
+  - name: "Plaid"
+    ats: lever
+    slug: plaid
+  - name: "Box"
+    ats: lever
+    slug: box
+  - name: "Ramp"
+    ats: ashby
+    slug: ramp
+  - name: "Linear"
+    ats: ashby
+    slug: linear
+  - name: "Notion"
+    ats: ashby
+    slug: notion
+  - name: "Retool"
+    ats: ashby
+    slug: retool
+
+# Big-name / India-market "product based companies" that most job seekers
+# mean by that phrase (Google, Amazon, Microsoft, Flipkart, Swiggy, Zoho,
+# etc.) mostly run custom or Workday-based career sites with no public
+# JSON API, and are individually expensive to scrape reliably (JS
+# rendering, frequent layout changes, anti-bot measures). Rather than
+# silently skip them, the report includes these as direct, pre-filtered
+# search links so you still see them every run -- you just check them
+# manually instead of getting scored matches.
+manual_check_links:
+  - name: "Google"
+    url: "https://www.google.com/about/careers/applications/jobs/results?q=data%20engineer"
+  - name: "Amazon"
+    url: "https://www.amazon.jobs/en/search?base_query=data+engineer"
+  - name: "Microsoft"
+    url: "https://jobs.careers.microsoft.com/global/en/search?q=data%20engineer"
+  - name: "Uber"
+    url: "https://www.uber.com/global/en/careers/list/?query=data%20engineer"
+  - name: "Adobe"
+    url: "https://careers.adobe.com/us/en/search-results?keywords=data%20engineer"
+  - name: "Salesforce"
+    url: "https://careers.salesforce.com/en/jobs/?search=data+engineer"
+  - name: "Flipkart"
+    url: "https://www.flipkartcareers.com/#!/joblist?category=Data%20Science"
+  - name: "Swiggy"
+    url: "https://careers.swiggy.com/jobs?search=data%20engineer"
+  - name: "Razorpay"
+    url: "https://careers.razorpay.com/jobs?department=Engineering"
+  - name: "Freshworks"
+    url: "https://www.freshworks.com/company/careers/"
+  - name: "Zoho"
+    url: "https://www.zoho.com/careers/"
+  - name: "PhonePe"
+    url: "https://www.phonepe.com/careers/job-openings/?search=data%20engineer"

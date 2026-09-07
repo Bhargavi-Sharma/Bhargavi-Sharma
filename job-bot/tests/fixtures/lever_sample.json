@@ -1,0 +1,18 @@
+[
+  {
+    "id": "abc-123",
+    "text": "Analytics Engineer",
+    "categories": {"location": "Remote"},
+    "hostedUrl": "https://jobs.lever.co/acme/abc-123",
+    "descriptionPlain": "Own dbt and BigQuery pipelines, write SQL and Python daily.",
+    "createdAt": 1690000000000
+  },
+  {
+    "id": "def-456",
+    "text": "Sales Engineer",
+    "categories": {"location": "Remote"},
+    "hostedUrl": "https://jobs.lever.co/acme/def-456",
+    "descriptionPlain": "Support the sales team with technical demos.",
+    "createdAt": 1690000000000
+  }
+]

@@ -1,0 +1,100 @@
+# Your candidate profile, kept in one place so the matcher and draft
+# generator both read from it. Update this file, not the code, as your
+# resume/skills change.
+
+contact:
+  name: "Bhargavi Sharma"
+  email: "bhargavi131313@gmail.com"
+  phone: "+91-9416972021"
+  linkedin: "linkedin.com/in/bhargavi-sharma"
+  github: "github.com/Bhargavi-Sharma"
+  location: "Gurugram, Haryana, India"
+
+experience_years: 2
+
+# Job title must contain at least one of these (case-insensitive substring match).
+target_titles:
+  - "data engineer"
+  - "analytics engineer"
+  - "etl developer"
+  - "etl engineer"
+  - "bi engineer"
+  - "business intelligence engineer"
+  - "cloud data engineer"
+  - "big data engineer"
+  - "data platform engineer"
+  - "data pipeline engineer"
+
+# Job title containing any of these is dropped even if it matched above.
+# Tuned for a 2-year-experience candidate; loosen as you gain seniority.
+exclude_title_keywords:
+  - "staff"
+  - "principal"
+  - "director"
+  - "vp "
+  - "head of"
+  - "senior manager"
+  - "manager,"
+  - " manager"
+  - "architect iii"
+  - "lead ii"
+
+# Skill keywords the matcher searches for in title + description, with
+# weights. Pulled from the TECHNICAL SKILLS section of the resume.
+skill_weights:
+  # core / heaviest overlap with current role
+  aws: 3
+  glue: 3
+  "step functions": 3
+  airflow: 3
+  redshift: 3
+  etl: 3
+  sql: 3
+  python: 3
+  bigquery: 3
+  "data pipeline": 3
+  "data warehouse": 3
+  s3: 3
+  # secondary
+  gcp: 2
+  "google cloud": 2
+  postgresql: 2
+  postgres: 2
+  "power bi": 2
+  ssrs: 2
+  "power automate": 2
+  tableau: 2
+  "cloud composer": 2
+  appflow: 2
+  mongodb: 2
+  oracle: 2
+  "pl/sql": 2
+  dax: 2
+  snowflake: 2
+  spark: 2
+  kafka: 2
+  "data validation": 2
+  "data reconciliation": 2
+  # adjacent / nice-to-have
+  java: 1
+  javascript: 1
+  "machine learning": 1
+  "generative ai": 1
+  "deep learning": 1
+
+# Minimum total weighted score for a job to be reported. Tune after your
+# first few runs based on how many/how relevant the results are.
+min_score: 6
+
+certifications_in_progress:
+  - name: "AWS Certified Data Engineer – Associate"
+    expected: "2026-11"
+
+# Free-form answers reused in generated drafts for common application
+# questions. Fill these in once; leave blank to have the draft flag them
+# as "TODO" instead of guessing.
+standard_answers:
+  work_authorization: "Indian national, no US/EU work authorization, will require sponsorship"
+  notice_period: "Immediate to 30 days (update if this changes)"
+  current_location: "Gurugram, Haryana, India"
+  open_to_relocation: "Open to relocation within India; open to remote"

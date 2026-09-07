@@ -1,0 +1,8 @@
+{
+  "jobAd": {
+    "sections": {
+      "jobDescription": {"text": "Design and maintain ETL pipelines using AWS Glue and Redshift."},
+      "qualifications": {"text": "Experience with SQL, Python, and data warehousing."}
+    }
+  }
+}

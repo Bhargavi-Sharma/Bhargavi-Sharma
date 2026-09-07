@@ -1,0 +1,11 @@
+{
+  "content": [
+    {
+      "id": "sr-1",
+      "name": "Data Engineer",
+      "location": {"city": "Bengaluru", "country": "in"},
+      "releasedDate": "2026-08-01T00:00:00.000Z",
+      "ref": "https://jobs.smartrecruiters.com/Acme/sr-1-data-engineer"
+    }
+  ]
+}
