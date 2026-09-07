@@ -36,7 +36,7 @@ exclude_title_keywords:
   - "senior manager"
   - "manager,"
   - " manager"
-  - "architect iii"
+  - "architect"
   - "lead ii"
 
 # Skill keywords the matcher searches for in title + description, with

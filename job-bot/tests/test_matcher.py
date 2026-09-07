@@ -2,7 +2,7 @@ from src.matcher import score_job, score_jobs, title_passes
 
 PROFILE = {
     "target_titles": ["data engineer", "analytics engineer", "cloud data engineer"],
-    "exclude_title_keywords": ["director", "staff", "principal"],
+    "exclude_title_keywords": ["director", "staff", "principal", "architect"],
     "skill_weights": {
         "aws": 3,
         "glue": 3,
@@ -27,6 +27,12 @@ def test_title_passes_rejects_non_target():
 
 def test_title_passes_rejects_excluded_seniority():
     assert title_passes("Director of Data Engineering", PROFILE) is False
+
+
+def test_title_passes_rejects_solutions_architect_false_positive():
+    # "Data Engineering" contains the substring "data engineer", so this
+    # would otherwise wrongly match despite being an Architect-level role.
+    assert title_passes("Specialist Solutions Architect - Data Engineering", PROFILE) is False
 
 
 def test_score_job_above_threshold():
