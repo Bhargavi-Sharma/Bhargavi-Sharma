@@ -1,5 +1,6 @@
 """Title filtering and weighted skill scoring against a candidate profile."""
 
+import re
 from dataclasses import dataclass, field
 
 
@@ -19,8 +20,23 @@ def title_passes(title: str, profile: dict) -> bool:
     return True
 
 
+def description_disqualified(description: str, profile: dict) -> bool:
+    """True if the description contains language ruling the candidate out
+    outright (residency/citizenship/work-authorization restrictions) --
+    caught by matching real postings against a candidate who needs visa
+    sponsorship and found several "Remote - US" roles that were never
+    actually reachable regardless of skill score."""
+    patterns = profile.get("exclude_description_patterns", [])
+    if not patterns or not description:
+        return False
+    return any(re.search(p, description, re.IGNORECASE) for p in patterns)
+
+
 def score_job(job: dict, profile: dict) -> MatchResult | None:
     if not title_passes(job.get("title", ""), profile):
+        return None
+
+    if description_disqualified(job.get("description", ""), profile):
         return None
 
     haystack = f"{job.get('title', '')} {job.get('description', '')}".lower()

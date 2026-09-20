@@ -1,4 +1,4 @@
-from src.matcher import score_job, score_jobs, title_passes
+from src.matcher import description_disqualified, score_job, score_jobs, title_passes
 
 PROFILE = {
     "target_titles": ["data engineer", "analytics engineer", "cloud data engineer"],
@@ -59,6 +59,32 @@ def test_score_job_below_threshold_returns_none():
 def test_score_job_wrong_title_returns_none():
     job = {"title": "Sales Engineer", "description": "AWS Glue Redshift Airflow SQL Python", "company": "Acme"}
     assert score_job(job, PROFILE) is None
+
+
+def test_description_disqualified_catches_residency_requirement():
+    profile = {**PROFILE, "exclude_description_patterns": [r"resid(e[sd]?|ing) in the (u\.?s\.?|united states)"]}
+    assert description_disqualified(
+        "This is a remote position open to candidates residing in the US.", profile
+    ) is True
+
+
+def test_description_disqualified_false_when_no_pattern_matches():
+    profile = {**PROFILE, "exclude_description_patterns": [r"resid(e[sd]?|ing) in the (u\.?s\.?|united states)"]}
+    assert description_disqualified("Fully remote, open worldwide.", profile) is False
+
+
+def test_description_disqualified_false_when_no_patterns_configured():
+    assert description_disqualified("residing in the US required", PROFILE) is False
+
+
+def test_score_job_drops_disqualifying_description():
+    profile = {**PROFILE, "exclude_description_patterns": [r"without sponsorship"]}
+    job = {
+        "title": "Data Engineer",
+        "description": "AWS Glue Redshift Airflow SQL Python. Must be authorized to work without sponsorship.",
+        "company": "Acme",
+    }
+    assert score_job(job, profile) is None
 
 
 def test_score_jobs_sorted_descending():
