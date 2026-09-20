@@ -2,8 +2,9 @@ name: Job bot
 
 on:
   schedule:
-    # 03:00 UTC daily = 08:30 IST
-    - cron: "0 3 * * *"
+    # 03:00 UTC every 2 days (approx -- cron's day-of-month step can shift
+    # by a day around month boundaries) = ~08:30 IST every other day
+    - cron: "0 3 */2 * *"
   workflow_dispatch:
     inputs:
       command:
