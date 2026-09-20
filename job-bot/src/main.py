@@ -3,9 +3,11 @@ new matches, write a report, and optionally email a digest.
 
 Usage:
     python -m src.main run [--dry-run] [--min-score N]
+    python -m src.main dump
 """
 
 import argparse
+import csv
 import sys
 from pathlib import Path
 
@@ -71,6 +73,39 @@ def run(dry_run: bool = False, min_score_override: int | None = None) -> int:
     return 0
 
 
+def dump() -> int:
+    """Fetch every posting from every tracked company with no title/skill
+    filtering, and write it to data/reports/raw_jobs.csv. This is for
+    ad-hoc checks against a profile other than the one in
+    config/profile.yaml (e.g. someone else's resume) without editing that
+    file or committing anyone's personal data to the repo -- score the
+    CSV against a throwaway profile wherever you're running this from.
+    """
+    companies_config = load_companies()
+    print(f"Fetching openings from {len(companies_config['companies'])} companies...")
+    jobs = fetchers.fetch_all(companies_config["companies"])
+    print(f"Fetched {len(jobs)} total postings (unfiltered).")
+
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    path = REPORTS_DIR / "raw_jobs.csv"
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["company", "title", "location", "url", "source_id", "description"])
+        for job in jobs:
+            writer.writerow(
+                [
+                    job["company"],
+                    job["title"],
+                    job.get("location") or "",
+                    job["url"],
+                    job["source_id"],
+                    job.get("description") or "",
+                ]
+            )
+    print(f"Raw postings written to {path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Job matching bot")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -79,10 +114,14 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("--dry-run", action="store_true", help="Skip sending email")
     run_parser.add_argument("--min-score", type=int, default=None, help="Override profile min_score")
 
+    subparsers.add_parser("dump", help="Fetch all postings unfiltered, for ad-hoc profile checks")
+
     args = parser.parse_args(argv)
 
     if args.command == "run":
         return run(dry_run=args.dry_run, min_score_override=args.min_score)
+    if args.command == "dump":
+        return dump()
 
     return 1
 

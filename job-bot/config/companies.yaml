@@ -71,6 +71,90 @@ companies:
   - name: "Retool"
     ats: ashby
     slug: retool
+  - name: "Instacart"
+    ats: greenhouse
+    slug: instacart
+  - name: "Cloudflare"
+    ats: greenhouse
+    slug: cloudflare
+  - name: "Asana"
+    ats: greenhouse
+    slug: asana
+  - name: "Affirm"
+    ats: greenhouse
+    slug: affirm
+  - name: "Confluent"
+    ats: greenhouse
+    slug: confluent
+  - name: "HashiCorp"
+    ats: greenhouse
+    slug: hashicorp
+  - name: "Twilio"
+    ats: greenhouse
+    slug: twilio
+  - name: "Squarespace"
+    ats: greenhouse
+    slug: squarespace
+  - name: "Duolingo"
+    ats: greenhouse
+    slug: duolingo
+  - name: "Roblox"
+    ats: greenhouse
+    slug: roblox
+  - name: "Patreon"
+    ats: greenhouse
+    slug: patreon
+  - name: "Webflow"
+    ats: greenhouse
+    slug: webflow
+  - name: "Brex"
+    ats: greenhouse
+    slug: brex
+  - name: "Carta"
+    ats: greenhouse
+    slug: carta
+  - name: "Benchling"
+    ats: greenhouse
+    slug: benchling
+  - name: "Samsara"
+    ats: greenhouse
+    slug: samsara
+  - name: "Toast"
+    ats: greenhouse
+    slug: toast
+  - name: "Amplitude"
+    ats: greenhouse
+    slug: amplitude
+  - name: "Mixpanel"
+    ats: greenhouse
+    slug: mixpanel
+  - name: "Airtable"
+    ats: greenhouse
+    slug: airtable
+  - name: "Attentive"
+    ats: lever
+    slug: attentive
+  - name: "Eventbrite"
+    ats: lever
+    slug: eventbrite
+  - name: "Nextdoor"
+    ats: lever
+    slug: nextdoor
+  - name: "Yelp"
+    ats: lever
+    slug: yelp
+  - name: "Vanta"
+    ats: ashby
+    slug: vanta
+  - name: "Mercury"
+    ats: ashby
+    slug: mercury
+  - name: "Watershed"
+    ats: ashby
+    slug: watershed
+  - name: "Deel"
+    ats: ashby
+    slug: deel
 
 # Big-name / India-market "product based companies" that most job seekers
 # mean by that phrase (Google, Amazon, Microsoft, Flipkart, Swiggy, Zoho,

@@ -4,7 +4,16 @@ on:
   schedule:
     # 03:00 UTC daily = 08:30 IST
     - cron: "0 3 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "src.main subcommand to run"
+        required: false
+        default: "run"
+        type: choice
+        options:
+          - run
+          - dump
 
 jobs:
   run:
@@ -37,7 +46,7 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-        run: python -m src.main run
+        run: python -m src.main ${{ github.event.inputs.command || 'run' }}
 
       - name: Upload report + drafts as workflow artifact
         uses: actions/upload-artifact@v4
