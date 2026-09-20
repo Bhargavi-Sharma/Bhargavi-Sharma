@@ -5,6 +5,7 @@ submit anything -- you still open the job's apply link and do that
 yourself.
 """
 
+import hashlib
 import re
 from pathlib import Path
 
@@ -100,7 +101,11 @@ def build_draft(result: MatchResult, profile: dict) -> str:
 
 def write_draft(result: MatchResult, profile: dict, drafts_dir: Path = DEFAULT_DRAFTS_DIR) -> Path:
     drafts_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{_slugify(result.job['company'])}-{_slugify(result.job['title'])}.md"
+    # Same company+title can post multiple times (different locations, or
+    # duplicate reqs) -- a short hash of source_id keeps each one's file
+    # (and apply link) from silently overwriting another's.
+    job_hash = hashlib.sha1(result.job["source_id"].encode("utf-8")).hexdigest()[:8]
+    filename = f"{_slugify(result.job['company'])}-{_slugify(result.job['title'])}-{job_hash}.md"
     path = drafts_dir / filename
     path.write_text(build_draft(result, profile), encoding="utf-8")
     return path
