@@ -4,11 +4,15 @@
 
 contact:
   name: "Bhargavi Sharma"
+  first_name: "Bhargavi"
+  last_name: "Sharma"
   email: "bhargavi131313@gmail.com"
   phone: "+91-9416972021"
   linkedin: "linkedin.com/in/bhargavi-sharma"
   github: "github.com/Bhargavi-Sharma"
   location: "Gurugram, Haryana, India"
+  address: "323, Sector 15, Sonipat, Haryana, India"
+  pincode: "131001"
 
 experience_years: 2
 

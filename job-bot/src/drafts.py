@@ -50,6 +50,7 @@ def _cover_note(result: MatchResult, profile: dict) -> str:
 
 def build_draft(result: MatchResult, profile: dict) -> str:
     job = result.job
+    contact = profile["contact"]
     answers = profile.get("standard_answers", {})
 
     lines = [
@@ -59,6 +60,18 @@ def build_draft(result: MatchResult, profile: dict) -> str:
         f"- Apply link: {job.get('url')}",
         f"- Match score: {result.score}",
         f"- Matched skills: {', '.join(result.matched_skills) or 'n/a'}",
+        "",
+        "## Personal info (paste into the application form)",
+        "",
+        f"- **First name:** {contact.get('first_name', contact['name'])}",
+        f"- **Last name:** {contact.get('last_name', '')}",
+        f"- **Full name:** {contact['name']}",
+        f"- **Email:** {contact['email']}",
+        f"- **Phone:** {contact['phone']}",
+        f"- **Address:** {contact.get('address', contact.get('location', ''))}",
+        f"- **Pincode / ZIP:** {contact.get('pincode', '')}",
+        f"- **LinkedIn:** {contact['linkedin']}",
+        f"- **GitHub:** {contact['github']}",
         "",
         "## Draft cover note (edit before sending)",
         "",
