@@ -35,6 +35,15 @@ def test_title_passes_rejects_solutions_architect_false_positive():
     assert title_passes("Specialist Solutions Architect - Data Engineering", PROFILE) is False
 
 
+def test_title_passes_rejects_manager_role_at_start_of_title():
+    # " manager" (with a leading space) doesn't match when "Manager" is
+    # the very first word -- caught in a live run where a Pinterest
+    # "Manager II, Engineering- Analytics Engineering" posting slipped
+    # through since "manager" had no preceding space to match on.
+    profile = {**PROFILE, "exclude_title_keywords": [*PROFILE["exclude_title_keywords"], "manager "]}
+    assert title_passes("Manager II, Engineering- Analytics Engineering", profile) is False
+
+
 def test_score_job_above_threshold():
     job = {
         "title": "Data Engineer II",
