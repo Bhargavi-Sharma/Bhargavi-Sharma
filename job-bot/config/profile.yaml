@@ -28,6 +28,12 @@ target_titles:
   - "big data engineer"
   - "data platform engineer"
   - "data pipeline engineer"
+  - "data analyst"
+  - "business analyst"
+  - "business intelligence analyst"
+  - "bi analyst"
+  - "analytics analyst"
+  - "reporting analyst"
 
 # Job title containing any of these is dropped even if it matched above.
 # Tuned for a 2-year-experience candidate; loosen as you gain seniority.
