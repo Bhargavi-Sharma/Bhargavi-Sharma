@@ -547,7 +547,7 @@ const PANES = {
         .map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
       <div class="composer"><textarea id="askIn" rows="2" placeholder="Ask in Hindi, English or Hinglish"></textarea>
       <button id="askGo">Ask</button><button class="ghost" id="askStop" hidden>Stop</button></div>
-      <p class="note" id="askNote">Answers use your Claude plan. Each answer checks the full chart report first, so it can take up to a minute.</p></div>`;
+      <p class="note"><span id="askNote">Answers use your Claude plan. Each answer checks the full chart report first, so it can take up to a minute.</span> <button class="link" id="askClear">Clear this chat</button></p></div>`;
   },
 };
 function wireVarga() {
@@ -645,7 +645,7 @@ const TOOLS = () => {
   ];
 };
 
-let sampleFn = null, toolsOk = false, askCtl = null;
+let sampleFn = null, toolsOk = false;
 async function initSample() {
   try { sampleFn = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch (e) { sampleFn = null; }
   if (sampleFn) { try { toolsOk = !!(await sampleFn.limits()).tools; } catch (e) { toolsOk = false; } }
@@ -655,61 +655,85 @@ function renderMd(md) {
   if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(md));
   return `<p style="white-space:pre-wrap">${esc(md)}</p>`;
 }
-async function wireChat() {
-  const log = $("#log"), id = state.current.id;
-  if (!sampleFn) {
-    $("#askNote").textContent = window.claude ? "Connecting to Claude…" : "Open this page inside Claude to ask questions. Every other tab works anywhere.";
-    $("#askGo").disabled = true;
+const chatLive = {}; // chart id -> {text, busy, ctl}
+let chatToken = 0;
+function paintChat() {
+  const log = $("#log"); if (!log || !state.current) return;
+  const id = state.current.id, turns = state.chats[id] || [], live = chatLive[id];
+  let html = turns.map(t => t.role === "user" ? `<div class="bubble user">${esc(t.content)}</div>` : `<div class="bubble bot">${renderMd(t.content)}</div>`).join("");
+  if (live && live.busy) html += `<div class="bubble bot typing">${live.text ? renderMd(live.text) : '<span class="note">Thinking - checking every factor…</span>'}</div>`;
+  log.innerHTML = html || `<p class="note">Ask anything about ${esc(state.current.name || "this chart")}. The answer is built from the full report: every yoga with its cancellations, dashas, transits, divisional charts and strengths.</p>`;
+  log.scrollTop = log.scrollHeight;
+  const go = $("#askGo"), stop = $("#askStop");
+  if (go) go.disabled = !!(live && live.busy);
+  if (stop) stop.hidden = !(live && live.busy);
+}
+/* The chat gets the full set of facts, minus repeated wording, so long chats stay under the size limit. */
+function compactForChat(D) {
+  const C = JSON.parse(JSON.stringify(D));
+  for (const a of Object.values(C.life_areas)) {
+    a.timing.windows = a.timing.windows.map(w => ({ start: w.start, end: w.end, peak: w.peak, dasha: w.md + "/" + w.ad, confidence: w.confidence.split(" ")[0],
+      age: w.age_at_start, past: w.is_past, why: w.factors.join("; ") }));
+    if (a.timing.next) a.timing.next = { start: a.timing.next.start, end: a.timing.next.end, confidence: a.timing.next.confidence.split(" ")[0] };
+    delete a.timing.method;
   }
-  if (!state.chats[id]) state.chats[id] = id === "example" ? [] : await Store.loadChat(id);
-  const turns = state.chats[id];
-  const paint = () => {
-    log.innerHTML = turns.length ? turns.map(t => t.role === "user" ? `<div class="bubble user">${esc(t.content)}</div>` : `<div class="bubble bot">${renderMd(t.content)}</div>`).join("")
-      : `<p class="note">Ask anything about ${esc(state.current.name || "this chart")}. The answer is built from the full report: every yoga with its cancellations, dashas, transits, divisional charts and strengths.</p>`;
-    log.scrollTop = log.scrollHeight;
-  };
-  paint();
-  const send = async text => {
-    text = text.trim(); if (!text || !sampleFn) return;
-    turns.push({ role: "user", content: text }); paint();
-    const bubble = document.createElement("div"); bubble.className = "bubble bot typing"; bubble.innerHTML = '<span class="note">Thinking - checking every factor…</span>';
-    log.appendChild(bubble); log.scrollTop = log.scrollHeight;
-    $("#askIn").value = ""; $("#askGo").disabled = true; $("#askStop").hidden = false;
-    askCtl = new AbortController();
-    const dossierText = JSON.stringify(state.dossier);
-    let history = turns.slice();
-    const budget = 230000 - RULES.length - dossierText.length;
-    while (JSON.stringify(history).length > budget && history.length > 1) history = history.slice(2);
-    if (history[0] && history[0].role !== "user") history = history.slice(1);
-    const input = [{ role: "user", content: RULES + "\n\nDOSSIER (JSON):\n" + dossierText }, ...history];
-    const opts = { modelTier: "complex", signal: askCtl.signal, onText: ({ text }) => { bubble.innerHTML = renderMd(text); log.scrollTop = log.scrollHeight; } };
-    if (toolsOk) opts.tools = TOOLS(); else opts.cache = false;
-    try {
-      const res = await sampleFn(input, opts);
-      bubble.classList.remove("typing");
-      turns.push({ role: "assistant", content: res.text + (res.truncated ? "\n\n*(Answer cut short - ask for one part at a time.)*" : "") });
-      if (id !== "example") Store.saveChat(id, turns);
-      paint();
-    } catch (e) {
-      bubble.classList.remove("typing");
-      const keep = e && e.text ? e.text : "";
-      const msg = { cancelled: "Stopped.", not_granted: "Claude access was not allowed for this page, so the Ask tab is off for this visit.",
-        sampling_disabled: "Claude isn't available on this account.", rate_limited: "You've hit your Claude usage limit for now. Try again later.",
-        session_expired: "Please sign in to Claude again.", refused: "Claude declined that question. Try asking it differently.",
-        prompt_too_large: "The conversation got too long. Start a new question.", tools_unavailable: "This view can't run the date tools." }[e && e.code]
-        || "Something went wrong reaching Claude. Try again.";
-      if (keep) { turns.push({ role: "assistant", content: keep + "\n\n*(interrupted)*" }); if (id !== "example") Store.saveChat(id, turns); }
-      else turns.pop();
-      paint();
-      $("#askNote").textContent = msg;
-      if (e && ["not_granted", "sampling_disabled", "not_declared", "capability_disabled"].includes(e.code)) sampleFn = null;
-    }
-    $("#askGo").disabled = !sampleFn; $("#askStop").hidden = true;
-  };
-  $("#askGo").onclick = () => send($("#askIn").value);
-  $("#askStop").onclick = () => askCtl && askCtl.abort();
-  $("#askIn").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send($("#askIn").value); } });
-  document.querySelectorAll("#chips [data-q]").forEach(b => b.onclick = () => send(b.dataset.q));
+  for (const md of C.vimshottari.mahadashas) md.antardashas = md.antardashas.map(x => ({ lord: x.lord, start: x.start, end: x.end, tone: x.plain.tone }));
+  delete C.variants_in_use; delete C.ashtakavarga.bav_by_sign;
+  for (const v of Object.values(C.vargas)) delete v.meaning;
+  return C;
+}
+async function sendChat(text) {
+  text = String(text || "").trim();
+  const note = $("#askNote");
+  if (!text) return;
+  if (!sampleFn) { if (note) note.textContent = window.claude ? "Still connecting to Claude - wait a few seconds and press Ask again." : "Open this page inside Claude to ask questions."; return; }
+  const id = state.current.id;
+  if (chatLive[id] && chatLive[id].busy) return;
+  const turns = state.chats[id] || (state.chats[id] = []);
+  turns.push({ role: "user", content: text });
+  const live = chatLive[id] = { text: "", busy: true, ctl: new AbortController() };
+  const box = $("#askIn"); if (box) box.value = "";
+  paintChat();
+  const dossierText = JSON.stringify(compactForChat(state.dossier));
+  const enc = new TextEncoder();
+  const bytes = x => enc.encode(typeof x === "string" ? x : JSON.stringify(x)).length;
+  let history = turns.slice();
+  const budget = 250000 - bytes(RULES) - bytes(dossierText) - 2000;
+  while (bytes(history) > budget && history.length > 1) history = history.slice(2);
+  while (history.length && history[0].role !== "user") history = history.slice(1);
+  const input = [{ role: "user", content: RULES + "\n\nDOSSIER (JSON):\n" + dossierText }, ...history];
+  const opts = { modelTier: "complex", signal: live.ctl.signal, onText: ({ text: t }) => { live.text = t; if (state.current.id === id) paintChat(); } };
+  if (toolsOk) opts.tools = TOOLS(); else opts.cache = false;
+  let msg = "";
+  try {
+    const res = await sampleFn(input, opts);
+    turns.push({ role: "assistant", content: res.text + (res.truncated ? "\n\n*(Answer cut short - ask for one part at a time.)*" : "") });
+  } catch (e) {
+    const keep = e && e.text ? e.text : "";
+    msg = { cancelled: "Stopped.", not_granted: "Claude access was not allowed for this page, so Ask is off for this visit. Reload the page to be asked again.",
+      sampling_disabled: "Claude isn't available on this account.", rate_limited: "You've hit your Claude usage limit for now. Try again later.",
+      session_expired: "Please sign in to Claude again.", refused: "Claude declined that question. Try asking it differently.",
+      prompt_too_large: "The conversation got too long. Delete this person's chat or start a new question.", tools_unavailable: "This view can't run the date tools." }[e && e.code]
+      || "Something went wrong reaching Claude" + (e && e.code ? ` (${e.code})` : "") + ". Try again.";
+    if (keep) turns.push({ role: "assistant", content: keep + "\n\n*(interrupted)*" }); else turns.pop();
+    if (e && ["not_granted", "sampling_disabled", "not_declared", "capability_disabled"].includes(e.code)) sampleFn = null;
+  }
+  live.busy = false;
+  if (id !== "example") Store.saveChat(id, turns);
+  if (state.current.id === id) { paintChat(); const n = $("#askNote"); if (n && msg) n.textContent = msg; }
+}
+async function wireChat() {
+  const token = ++chatToken, id = state.current.id;
+  if (!sampleFn) { const n = $("#askNote"); if (n) n.textContent = window.claude ? "Connecting to Claude…" : "Open this page inside Claude to ask questions. Every other tab works anywhere."; }
+  if (!state.chats[id]) { const t = id === "example" ? [] : await Store.loadChat(id); if (!state.chats[id]) state.chats[id] = t; }
+  if (token !== chatToken || state.tab !== "ask" || state.current.id !== id) return;
+  paintChat();
+  $("#askGo").onclick = () => sendChat($("#askIn").value);
+  $("#askStop").onclick = () => { const l = chatLive[id]; if (l && l.ctl) l.ctl.abort(); };
+  $("#askIn").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat($("#askIn").value); } });
+  document.querySelectorAll("#chips [data-q]").forEach(b => b.onclick = () => sendChat(b.dataset.q));
+  const clr = $("#askClear");
+  if (clr) clr.onclick = () => { if (chatLive[id] && chatLive[id].busy) return; state.chats[id] = []; if (id !== "example") Store.saveChat(id, []); paintChat(); };
 }
 
 // ------------------------------------------------------------------ start
