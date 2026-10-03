@@ -76,6 +76,7 @@
     mind: { houses: [4, 1, 5, 8], main: 4, karaka: "Moon", varga: 1, label: "Mind / emotional stability (Moon, 4th, 5th)", adverse: false },
     govt_authority: { houses: [10, 9, 1, 11], main: 10, karaka: "Sun", varga: 10, label: "Government job / authority / fame" },
     accidents_surgery: { houses: [8, 6, 1], main: 8, karaka: "Mars", varga: 1, label: "Accidents / surgery / sudden events", adverse: true },
+    love: { houses: [5, 7, 11], main: 5, karaka: "Venus", varga: 9, label: "Love & relationships (romance, dating, break-ups)" },
     spirituality: { houses: [9, 12, 5], main: 12, karaka: "Ketu", varga: 20, label: "Spiritual growth" },
     litigation: { houses: [6, 8, 12], main: 6, karaka: "Mars", varga: 1, label: "Disputes / debts / enemies", adverse: true },
   };
@@ -247,7 +248,7 @@
     const winStart = birthMs + 365.25 * 16 * DAY, winEnd = nowMs + 365.25 * 30 * DAY, nowYm = fmtYm(nowMs);
     const ageAt = ym => { const [y, m] = ym.split("-").map(Number); return round(y + (m - 1) / 12 - (birth.y + (birth.mo - 1) / 12), 1); };
     const areas = {};
-    const MIN_AGE = { marriage: 18, children: 20, career: 18, govt_authority: 18, wealth: 18, property: 20, foreign: 17 };
+    const MIN_AGE = { love: 15, marriage: 18, children: 20, career: 18, govt_authority: 18, wealth: 18, property: 20, foreign: 17 };
     for (const area of Object.keys(AREAS)) {
       const st = Math.max(winStart, birthMs + 365.25 * (MIN_AGE[area] || 16) * DAY);
       const pr = promise(c, area, av, cond), ew = eventWindows(c, area, st, winEnd);

@@ -90,6 +90,8 @@ details.item summary { cursor: pointer; display: flex; gap: 8px; align-items: ba
 details.item .body { padding: 6px 0 4px 2px; display: grid; gap: 4px; font-size: .92rem; }
 ul.plain { margin: 0; padding-left: 18px; }
 .chat { display: grid; gap: 10px; }
+details.facts { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; margin-bottom: 12px; display: grid; gap: 8px; }
+details.facts textarea { margin: 8px 0; }
 .log { display: grid; gap: 10px; max-height: 64vh; overflow-y: auto; padding-right: 4px; }
 .bubble { padding: 10px 14px; border-radius: 12px; min-width: 0; overflow-wrap: anywhere; }
 .bubble.user { background: var(--chip); justify-self: end; max-width: 85%; }
@@ -182,6 +184,7 @@ footer { margin-top: 24px; font-size: .82rem; color: var(--muted); max-width: 70
 <script src="engine-rules.js"></script>
 <script src="engine-time.js"></script>
 <script src="engine-explain.js"></script>
+<script src="engine-insight.js"></script>
 <script src="cities.js"></script>
 <script>
 "use strict";
@@ -346,8 +349,8 @@ function openPerson(p) {
   try {
     const birth = { name: p.name, y: p.y, mo: p.mo, d: p.d, h: p.h, mi: p.mi, s: p.s || 0, tz: isNaN(Number(p.tz)) ? p.tz : Number(p.tz),
       lat: p.lat, lon: p.lon, place: p.place, gender: p.gender };
-    state.dossier = J.explain(J.buildDossier(birth, p.settings || {}));
     state.chart = new J.Chart(birth, p.settings || {});
+    state.dossier = J.insight(J.explain(J.buildDossier(birth, p.settings || {})), state.chart);
     state.birth = birth; state.current = p;
   } catch (err) {
     console.error(err); $("#formMsg").textContent = "Couldn't calculate this chart: " + (err.message || err); return false;
@@ -435,6 +438,8 @@ const PANES = {
       <b>Planetary war:</b> ${chip(D.planetary_war, w => pill(`${w.planets.join(" vs ")} → ${w.winner}`))}<br>
       <b>Gandanta:</b> ${chip(D.gandanta, g => pill(g.point, "warn"))}<br>
       <b>Bhava chalit shifts:</b> ${chip(D.bhava_chalit_shifts, s => pill(`${s.planet} ${s.whole_sign_house}→${s.chalit_house}`))}</p>
+      <h3>What each planet runs in your life</h3><p class="note">One planet runs several areas, so they move together in its periods.</p>
+      <div class="scroll"><table><tr><th>Planet</th><th>Runs these areas</th><th>Body</th><th>Its mahadasha</th></tr>${Object.entries(D.planet_map).map(([p, m]) => `<tr><td><b>${p}</b></td><td>${esc(m.runs_areas.join(", ") || "—")}${m.note ? `<br><span class="note">${esc(m.note)}</span>` : ""}</td><td class="note">${esc(m.body)}</td><td class="mono">${esc(m.mahadasha_years.join(", "))}</td></tr>`).join("")}</table></div>
       <h3>Every strength and weakness, per planet</h3>${cond}`;
   },
   yogas() {
@@ -455,7 +460,13 @@ const PANES = {
       <div class="body"><p class="tone-${m.plain.tone}" style="margin:0">${esc(m.plain.text)}</p>
       <div class="scroll"><table><tr><th>Sub-period</th><th>Dates</th><th>What it brings</th></tr>${m.antardashas.map(a => `<tr ${a.start <= now && now < a.end ? 'style="font-weight:600"' : ""}><td>${m.lord} / ${a.lord}<br>${pill(a.plain.tone, a.plain.tone === "good" ? "good" : a.plain.tone === "hard" ? "bad" : "warn")}</td><td class="mono">${a.start}<br>${a.end}</td><td>${esc(a.plain.text)}</td></tr>`).join("")}</table></div></div></details>`).join("");
     const hv = D.health_vigilance_periods.map(h => `<tr><td>${h.md} / ${h.ad}</td><td class="mono">${h.start} → ${h.end}</td><td class="note">${esc(h.why.join(", "))}</td></tr>`).join("");
-    return `<div class="simple"><h3>Right now</h3><p>${esc(D.plain.now || "")}</p></div><p class="note">A dasha is a planet's period. Each one brings its own themes into your life; the sub-period (antardasha) decides what comes up in those years.</p><p>Birth dasha <b>${v.birth_dasha_lord}</b>, ${v.balance_at_birth_years} years left at birth · year = ${v.year_length_days} days</p>${md}
+    const ch = D.life_chapters.map(c => `<tr ${c.is_current ? 'style="font-weight:600"' : ""}><td>${c.mahadasha}<br>${pill(c.tone, c.tone === "good" ? "good" : c.tone === "hard" ? "bad" : "warn")}</td><td class="mono">${c.from} → ${c.to}<br><span class="note">age ${c.age_from}-${c.age_to}</span></td><td>${esc(c.switches_on.join(", ") || "—")}${c.node_note ? `<br><span class="note">${esc(c.node_note)}</span>` : ""}</td></tr>`).join("");
+    const up = D.upcoming_5y.map(u => `<tr><td class="mono">${u.from} → ${u.to}</td><td>${esc(u.area)}</td><td>${pill(u.confidence, u.confidence === "high" ? "good" : "warn")}</td><td class="note">${esc(u.dasha)}</td></tr>`).join("");
+    return `<div class="simple"><h3>Right now</h3><p>${esc(D.plain.now || "")}</p></div>
+      <h3 style="margin-top:0">Chapters of your life</h3><p class="note">Each mahadasha is a chapter. These are the parts of life each chapter switches on.</p>
+      <div class="scroll"><table><tr><th>Chapter</th><th>When</th><th>Brings into focus</th></tr>${ch}</table></div>
+      <h3>Next 5 years, all areas together</h3><div class="scroll"><table><tr><th>When</th><th>Area</th><th>How sure</th><th>Dasha</th></tr>${up || '<tr><td class="note">Nothing medium or high.</td></tr>'}</table></div>
+      <h3>All periods</h3><p class="note">A dasha is a planet's period. Each one brings its own themes into your life; the sub-period (antardasha) decides what comes up in those years.</p><p>Birth dasha <b>${v.birth_dasha_lord}</b>, ${v.balance_at_birth_years} years left at birth · year = ${v.year_length_days} days</p>${md}
       <h3>Health-vigilance periods</h3><p class="note">Dashas where both lords are marakas (2nd/7th) or 6/8/12 lords. Times to be careful with health, not predictions of death.</p>
       <div class="scroll"><table>${hv}</table></div>`;
   },
@@ -497,6 +508,8 @@ const PANES = {
     const sc = D.saturn_cycles.map(s => `<tr><td>${esc(s.type)}</td><td class="mono">${s.start} → ${s.end}</td></tr>`).join("");
     return `<p class="note" style="margin-top:0">Transits are where the planets are today, counted from your Moon sign. Fast planets (Sun, Moon, Mercury, Venus, Mars) change your weeks; slow ones (Jupiter, Saturn, Rahu, Ketu) shape whole years.</p><p>Today (${t.date}): Saturn is ${t.saturn_from_moon} from your Moon · ${esc(t.sade_sati_or_dhaiya || "no Sade Sati or Dhaiya")} · Jupiter + Saturn both touch houses ${t.double_transit_houses_from_lagna.join(", ") || "none"}</p>
       <div class="scroll"><table><tr><th>Planet</th><th>Now in</th><th>From lagna</th><th>From Moon</th><th>What it means for you now</th></tr>${rows}</table></div>
+      <h3>Slow planets, 10 years back to 10 years ahead</h3><p class="note">Where Saturn, Jupiter, Rahu and Ketu stay, the house they hit, and the body region they press on.</p>
+      <div class="scroll"><table><tr><th>Planet</th><th>When</th><th>Sign</th><th>From lagna / Moon</th><th>Body region</th></tr>${D.slow_transits.map(t => `<tr class="${t.is_past ? "note" : ""}" ${t.is_current ? 'style="font-weight:600"' : ""}><td>${t.planet}</td><td class="mono">${t.from} → ${t.to}</td><td>${t.sign}</td><td>${t.house_from_lagna} / ${t.house_from_moon} ${pill(t.favourable_from_moon ? "good" : "hard", t.favourable_from_moon ? "good" : "bad")}</td><td>${esc(t.body_region)}</td></tr>`).join("")}</table></div>
       <h3>Saturn cycles over your life</h3><div class="scroll"><table>${sc}</table></div>`;
   },
   remedies() {
@@ -541,7 +554,11 @@ const PANES = {
       <h3>Where the classical texts disagree</h3>${vr}`;
   },
   ask() {
-    return `<div class="chat"><div class="log" id="log"></div>
+    const f = state.current.facts || "", ex = state.current.id === "example";
+    return `<details class="facts" ${f ? "" : "open"}><summary><b>Facts about ${esc(state.current.name || "this person")}</b> <span class="note">${f ? "saved - the chat reads these every time" : "add these so answers fit real life"}</span></summary>
+      <textarea id="factsIn" rows="5" ${ex ? "disabled" : ""} placeholder="What do they do (study/job, where)? Relationship status? Family: siblings and children with birth years, parents' health. Important past events with month-year (job, moves, relationships, illnesses, injuries).">${esc(f)}</textarea>
+      <div class="confirm"><button class="ghost" id="factsSave" ${ex ? "disabled" : ""}>Save facts</button><span class="note" id="factsMsg">${ex ? "Make your own kundali first." : ""}</span></div></details>
+    <div class="chat"><div class="log" id="log"></div>
       <div class="chips" id="chips">${["Give me a full, honest life reading", "Meri shaadi kab hogi aur spouse kaisa hoga?", "Career: peaks and falls with dates",
         "How is my mind and emotional stability?", "Which gemstone should I wear, and which to avoid?", "What do the next 5 years look like?"]
         .map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
@@ -573,45 +590,42 @@ function wireRectify() {
 }
 
 // ------------------------------------------------------------------ chat (Claude via the sample capability)
-const RULES = `You are a Jyotish (Vedic astrology) analyst. You read one person's chart from a complete, pre-computed DOSSIER produced by a deterministic engine (planet positions matching Swiss Ephemeris; rules from BPHS, Brihat Jataka, Phaladeepika, Saravali, Jataka Parijata, Jaimini Sutras; Lal Kitab kept separate). The dossier is the only source of chart facts. Never compute or guess planetary positions, dashas or transits yourself - read them from the dossier or call a tool.
+const RULES = `You are a Jyotish (Vedic astrology) reader. You read one person's chart from a complete, pre-computed DOSSIER made by a deterministic engine (positions matching Swiss Ephemeris; rules from BPHS, Brihat Jataka, Phaladeepika, Saravali, Jataka Parijata, Jaimini Sutras; Lal Kitab kept separate). The dossier is your only source of chart facts. Never compute or guess positions, dashas or transits yourself: read them from the dossier or call a tool. KNOWN FACTS (what the user has told about their real life) and TODAY's date come with the dossier.
 
-HOW TO WORK (silently, before every answer):
-1. Identify the life area, its houses, their lords, the karaka(s) and the divisional chart (D9 marriage, D10 career, D7 children, D2 wealth, D4 property, D12 parents, D24 education, D20 spiritual).
-2. Weigh ALL favourable and unfavourable factors for that area from the dossier: life_areas.<area>.promise, the planet_condition of the lord and karaka, functional_nature, shadbala, ashtakavarga, yogas (with their cancellations/weakenings) and doshas (with cancellations). Apply every exception the dossier lists (neecha bhanga, combustion, planetary war, retrogression, kendradhipati dosha, dusthana lordship, vargottama).
-3. Timing: use vimshottari (MD/AD/PD) and life_areas.<area>.timing.windows (and .next). Call an event 'high' only when dasha AND double transit agree. Use the tools for exact pratyantar dates or dates outside the precomputed range.
-All of this checking happens in your head. Do not write it out.
+HOW TO WORK (silently, before every answer)
+1. Start from the life chapter: find the current or relevant mahadasha in life_chapters and read its themes and node_note. Every answer sits inside that chapter. (Example: an exalted Rahu in the 12th means foreign lands, multinational and technology work for the whole Rahu chapter.)
+2. Read by planet, not by area. One planet runs several areas (planet_map.runs_areas), so an event in one area shows up in its other areas and body parts at the same time. Before giving any window, check timeline for that period to see every area it switches on, and say so when two areas move together (e.g. Venus = love + feet).
+3. Check KNOWN FACTS first. If a reading depends on a fact you don't have (what the person does, relationship status, siblings' or children's ages, a parent's health), ask ONE short question before reading, or state the one assumption you are making. Never contradict a known fact: if the chart points one way and the fact another, say the chart shows the inclination/aspiration and the fact shows the reality.
+4. Weigh every favourable and unfavourable factor for the area: life_areas.<area>.promise, planet_condition (with its body field), functional_nature, shadbala, ashtakavarga, yogas (with cancellations), doshas (with cancellations), profiles.
+5. Timing: life_areas.<area>.timing.windows and .next, the timeline, upcoming_5y and slow_transits (Saturn/Jupiter/Rahu/Ketu sign changes with the body region they press on). Call something 'high' only when dasha AND double transit agree. Love, short jobs and short events happen at pratyantar level: use get_pratyantars. Health/injury: check slow_transits body regions and the dasha lord's body field.
+6. Before naming the planet behind a dated event, call get_dasha_at for that exact date. Never attach an event to a planet from memory.
 
-WHAT TO WRITE (default):
-- Answer only what was asked, about the person's life, in plain words: what it is like, what will happen, when (month-year windows with how sure: high / medium / low), what to watch out for, and remedies only if they help with this topic.
-- Example: asked about mother, talk about the relationship with her, her nature, her health, important periods for her, and remedies for this relationship - nothing else.
-- NO astrology jargon, NO list of houses/planets/yogas, NO "factors checked" line, NO sources. Keep it short: a few short sections or bullets.
-- Do not add unrelated topics (if asked about mother, do not discuss career).
+WHAT TO WRITE
+- Answer only what was asked, in plain words about real life: what it is like, what will happen, when (month-year windows with how sure), and what to watch. No astrology jargon, no lists of planets/houses, no sources - unless asked (see below).
+- Make statements that can be checked: what, when, how sure. No filler ("be patient", "keep papers clean", "stay positive"). No "if you do X then Y" hedging unless the chart itself shows a choice.
+- Short. Answer in a few bullets or short paragraphs. Do not add other topics.
+- Remedies only when asked, or one line when it directly helps the asked topic. Never repeat the same gem in every answer. Use remedies.gemstones exactly as given (respect 'avoid', cautions such as maraka, and finger/enemy conflicts). Never say an event happened because of a gem.
+- Weak areas: describe the kind of difficulty precisely (e.g. "long solo self-study doesn't hold; structured settings work"), not a verdict about the person's ability. Check it against KNOWN FACTS.
 
-WHEN TO SHOW THE ASTROLOGY:
-- Only when the user asks for the reason - e.g. "kundali mein kya hai jo yeh dikhata hai", "why", "kaise pata", "which planet", "proof", "explain the astrology". Then list the specific chart factors behind your answer (planets, houses, dasha, yoga with its cancellation status, transit), each with a one-line plain meaning, and cite sources at chapter level only.
+WHEN TO SHOW THE ASTROLOGY
+- Only when asked why ("kundali mein kya hai jo...", "kaise pata", "which planet", "proof"). Then list the specific factors with a one-line plain meaning each, chapter-level sources only. Never invent verse numbers or Sanskrit quotations.
 
-CONSISTENCY RULES:
-- Weigh everything before you answer, so you never need to reverse yourself. If the factors conflict, say so up front and say which side wins and why (dignity and strength beat mere placement; varga confirmation beats a single D1 indication; a cancelled yoga does not count).
-- If the user pushes back, re-check the dossier. Change your answer ONLY if (a) they point to a dossier factor you failed to weigh, or (b) they give new information (corrected birth time, an actual past event). Otherwise keep your answer and explain which factors outweigh their point. Never agree just to please.
-- If a conclusion depends on a time-sensitive chart point (birth_time_sensitivity, boundary_planets) or a disputed rule (variants_in_use), mention it in one short plain line, e.g. "this depends on your exact birth time".
+HONESTY AND EVIDENCE
+- Brutally honest about bad results, never inflated about good ones.
+- Keep two kinds of match apart: (a) predictions you made BEFORE the user told you what happened, and (b) explanations you found AFTER being told. Only (a) counts as a hit. Call (b) "a possible explanation", never "exact" or "proof".
+- Birth-time rectification: a score difference of a few points is noise. Say "not contradicted" rather than "confirmed" unless one time clearly wins.
+- Spouse/children descriptions: if birth_time_sensitivity shows D9 (or D7) changes within about 15 minutes, give only broad traits from D1 and say details depend on the exact birth time. Confidence and caveat must match.
+- Never give name initials of a future spouse (say the method is unreliable). Never present coincidences (an animal, a number, an omen) as evidence.
+- Never bring up longevity, death or lifespan unless the user directly asks about lifespan. Never give a date or year of death (BPHS ch.44 itself calls it the least reliable judgement); give health-vigilance windows instead.
+- Only say you checked or calculated something if you actually called a tool or read that field for this answer.
+- Ask for verification evenly across areas (career, family, money, health, relationships), not just one or two. If the user hasn't answered a verification question, don't ask it again in the next answer.
+- Mention birth-time sensitivity at most once per conversation, unless the answer depends on it.
 
-HONESTY RULES (the user asked for brutal honesty):
-- State difficult results plainly: weak marriage promise, separation risk, career stagnation, debt, illness-prone periods, bad dashas. No softening. Use direct words.
-- Do not inflate good results either. If the promise is weak, say the event may not happen or may come late.
-- Health: name the vulnerable periods (health_vigilance_periods, 6/8/12 dashas, Sade Sati, Ashtama Shani) and body areas, and advise medical check-ups. Give the Jaimini longevity compartment if asked, with its reality_check. Do NOT give a date or year of death: the classical texts themselves call longevity the least reliable judgement (BPHS ch.44). Say this directly if asked, then give the vigilance windows instead.
-- Past windows: when a predicted window is in the past, briefly ask whether the event happened - this is how the birth time gets verified.
-- When you do cite sources, cite only at chapter level as given in the dossier. Never invent verse numbers or Sanskrit quotations.
-- Lal Kitab and Parashari often disagree; present Lal Kitab as a separate view and never merge them silently.
+CONSISTENCY
+- Weigh everything before answering so you don't need to reverse yourself. If factors conflict, say which side wins and why (strength and dignity beat placement; divisional-chart confirmation beats a single D1 sign; a cancelled yoga doesn't count).
+- Change an answer only when the user points to a factor you missed or gives a new fact. When you do, retract every conclusion that rested on the old one (including remedies and attributions) - don't leave dependent claims standing.
 
-DESCRIPTIONS: for "what will my spouse look like", "how many children / which order", "what career", "is my mind stable", use dossier.profiles together with D9/D7/D10. Give a concrete description (build, complexion, features, temperament, marks), say which indicators agree, and mark conflicting ones. Be specific - a vague answer is useless to this user - but never claim certainty the factors do not support.
-
-PRECISION OF DATES: give month-year windows; narrow to weeks only via get_pratyantars plus transits, and say that day-level dates are beyond what the method supports.
-
-REMEDIES: use remedies.gemstones (respect 'avoid' statuses, cautions and conflicts - finger and enemy-gem clashes), remedies.mantra_daan and remedies.lal_kitab. Never recommend a gem the dossier says to avoid.
-
-PLAIN LANGUAGE (most important for this user): write for a normal person, not an astrologer. The dossier has ready plain-language fields (plain, favourable_plain, unfavourable_plain, windows[].plain, mahadashas[].plain, shadbala.planets[].plain, transits_now.planets[].plain, plain.*) - use them.
-
-STYLE: Reply in the user's language (Hindi, English or Hinglish - match them). Be concise: short headings and bullets (markdown). If a Sanskrit term is unavoidable, give its meaning in brackets. The page already shows a general disclaimer, so do not add one.`;
+STYLE: Reply in the user's language (Hindi, English or Hinglish - match them). Markdown with short headings or bullets. The page shows a general disclaimer, so don't add one.`;
 
 const TOOLS = () => {
   const c = state.chart, birth = state.birth, settings = state.current.settings || {};
@@ -641,7 +655,7 @@ const TOOLS = () => {
       execute: ({ area, from_year, to_year }) => { if (!J.AREAS[area]) throw new Error("unknown area"); return trim(J.eventWindows(c, String(area), Date.UTC(Number(from_year), 0, 1), Date.UTC(Number(to_year), 11, 31), 10)); } },
     { name: "rectify_birth_time", description: "Score candidate birth times (+/- window_minutes) against known past events [{area, date YYYY-MM-DD}]. Use when the user gives dated past events.",
       inputSchema: { type: "object", properties: { events: { type: "array", items: { type: "object", properties: { area: { type: "string", enum: areaEnum }, date: { type: "string" } }, required: ["area", "date"] } }, window_minutes: { type: "integer" } }, required: ["events", "window_minutes"] },
-      execute: ({ events, window_minutes }) => trim(J.rectifyByEvents(birth, settings, (Array.isArray(events) ? events : []).map(e => ({ area: String(e.area), date: String(e.date) })), Math.max(5, Math.min(Number(window_minutes) || 60, 120)), 2)) },
+      execute: ({ events, window_minutes }) => trim({ note: "Fit scores that differ by only a few points are noise: report 'not contradicted', not 'confirmed'. Events you placed in an area yourself may be mis-assigned.", results: J.rectifyByEvents(birth, settings, (Array.isArray(events) ? events : []).map(e => ({ area: String(e.area), date: String(e.date) })), Math.max(5, Math.min(Number(window_minutes) || 60, 120)), 2) }) },
   ];
 };
 
@@ -698,10 +712,12 @@ async function sendChat(text) {
   const enc = new TextEncoder();
   const bytes = x => enc.encode(typeof x === "string" ? x : JSON.stringify(x)).length;
   let history = turns.slice();
-  const budget = 250000 - bytes(RULES) - bytes(dossierText) - 2000;
+  const budget = 250000 - bytes(RULES) - bytes(dossierText) - bytes(state.current.facts || "") - 3000;
   while (bytes(history) > budget && history.length > 1) history = history.slice(2);
   while (history.length && history[0].role !== "user") history = history.slice(1);
-  const input = [{ role: "user", content: RULES + "\n\nDOSSIER (JSON):\n" + dossierText }, ...history];
+  const facts = (state.current.facts || "").trim();
+  const head = RULES + `\n\nTODAY: ${new Date().toISOString().slice(0, 10)}\n\nKNOWN FACTS (from the user):\n${facts || "(none given yet - ask when a reading depends on them)"}\n\nDOSSIER (JSON):\n` + dossierText;
+  const input = [{ role: "user", content: head }, ...history];
   const opts = { modelTier: "complex", signal: live.ctl.signal, onText: ({ text: t }) => { live.text = t; if (state.current.id === id) paintChat(); } };
   if (toolsOk) opts.tools = TOOLS(); else opts.cache = false;
   let msg = "";
@@ -732,6 +748,13 @@ async function wireChat() {
   $("#askStop").onclick = () => { const l = chatLive[id]; if (l && l.ctl) l.ctl.abort(); };
   $("#askIn").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat($("#askIn").value); } });
   document.querySelectorAll("#chips [data-q]").forEach(b => b.onclick = () => sendChat(b.dataset.q));
+  const fs = $("#factsSave");
+  if (fs) fs.onclick = async () => {
+    state.current.facts = $("#factsIn").value.trim();
+    const ok = await Store.savePerson(state.current);
+    state.people = state.people.map(x => x.id === state.current.id ? { ...x, facts: state.current.facts } : x);
+    $("#factsMsg").textContent = ok ? "Saved. New answers will use these facts." : "Couldn't save right now - try again.";
+  };
   const clr = $("#askClear");
   if (clr) clr.onclick = () => { if (chatLive[id] && chatLive[id].busy) return; state.chats[id] = []; if (id !== "example") Store.saveChat(id, []); paintChat(); };
 }

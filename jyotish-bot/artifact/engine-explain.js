@@ -46,6 +46,7 @@
     siblings: "events involving brothers/sisters", mind: "a phase that strongly affects your mood and peace of mind",
     govt_authority: "a government job, authority, award or public recognition",
     accidents_surgery: "risk of an accident, injury or surgery - drive carefully and avoid risks",
+    love: "a romantic phase - a relationship starting, deepening or (if the period is hard) ending",
     spirituality: "spiritual growth, pilgrimage or a strong interest in meditation/religion",
     litigation: "disputes, debts or conflicts - avoid lending money and legal fights",
   };

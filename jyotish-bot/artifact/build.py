@@ -21,7 +21,7 @@ def ascii_js(text: str) -> str:
     return "".join(out)
 
 
-for name in ("astro.js", "engine-core.js", "engine-rules.js", "engine-time.js", "engine-explain.js", "cities.js"):
+for name in ("astro.js", "engine-core.js", "engine-rules.js", "engine-time.js", "engine-explain.js", "engine-insight.js", "cities.js"):
     (DIST / name).write_text(ascii_js((HERE / name).read_text(encoding="utf-8")), encoding="ascii")
 (DIST / "index.html").write_text((HERE / "index.html").read_text(encoding="utf-8"), encoding="utf-8")
 print("built", sorted(p.name for p in DIST.iterdir()))
