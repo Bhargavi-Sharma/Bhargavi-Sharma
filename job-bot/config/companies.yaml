@@ -156,6 +156,274 @@ companies:
     ats: ashby
     slug: deel
 
+  # Added 2026-10-03 at user's request to widen coverage well beyond the
+  # original seed list -- verified each slug directly against its ATS's
+  # public API (http 200 + real job titles matching the company's actual
+  # business, not just a 200 for an unrelated same-named org) before
+  # adding. A few plausible slugs were tried and rejected because they
+  # silently resolved to a different company of the same name: "remote"
+  # (an unrelated education/staffing org, not Remote.com), "slice" (a BPO
+  # staffing firm, not the fintech Slice), and "neon" (Banco Neon, a
+  # Brazilian bank, not the Postgres company Neon).
+  - name: "Dropbox"
+    ats: greenhouse
+    slug: dropbox
+  - name: "Lyft"
+    ats: greenhouse
+    slug: lyft
+  - name: "Doximity"
+    ats: greenhouse
+    slug: doximity
+  - name: "Anthropic"
+    ats: greenhouse
+    slug: anthropic
+  - name: "Adyen"
+    ats: greenhouse
+    slug: adyen
+  - name: "Block"
+    ats: greenhouse
+    slug: block
+  - name: "Datadog"
+    ats: greenhouse
+    slug: datadog
+  - name: "Elastic"
+    ats: greenhouse
+    slug: elastic
+  - name: "MongoDB"
+    ats: greenhouse
+    slug: mongodb
+  - name: "Fivetran"
+    ats: greenhouse
+    slug: fivetran
+  - name: "Scale AI"
+    ats: greenhouse
+    slug: scaleai
+  - name: "Okta"
+    ats: greenhouse
+    slug: okta
+  - name: "PagerDuty"
+    ats: greenhouse
+    slug: pagerduty
+  - name: "Intercom"
+    ats: greenhouse
+    slug: intercom
+  - name: "Klaviyo"
+    ats: greenhouse
+    slug: klaviyo
+  - name: "Grafana Labs"
+    ats: greenhouse
+    slug: grafanalabs
+  - name: "Netskope"
+    ats: greenhouse
+    slug: netskope
+  - name: "Zscaler"
+    ats: greenhouse
+    slug: zscaler
+  - name: "Flexport"
+    ats: greenhouse
+    slug: flexport
+  - name: "Vercel"
+    ats: greenhouse
+    slug: vercel
+  - name: "Netlify"
+    ats: greenhouse
+    slug: netlify
+  - name: "Gusto"
+    ats: greenhouse
+    slug: gusto
+  - name: "Chime"
+    ats: greenhouse
+    slug: chime
+  - name: "SoFi"
+    ats: greenhouse
+    slug: sofi
+  - name: "Upstart"
+    ats: greenhouse
+    slug: upstart
+  - name: "Coursera"
+    ats: greenhouse
+    slug: coursera
+  - name: "Udemy"
+    ats: greenhouse
+    slug: udemy
+  - name: "Khan Academy"
+    ats: greenhouse
+    slug: khanacademy
+  - name: "Braze"
+    ats: greenhouse
+    slug: braze
+  - name: "Sigma Computing"
+    ats: greenhouse
+    slug: sigmacomputing
+  - name: "Cockroach Labs"
+    ats: greenhouse
+    slug: cockroachlabs
+  - name: "PlanetScale"
+    ats: greenhouse
+    slug: planetscale
+  - name: "Imply"
+    ats: greenhouse
+    slug: imply
+  - name: "Workato"
+    ats: greenhouse
+    slug: workato
+  - name: "Smartsheet"
+    ats: greenhouse
+    slug: smartsheet
+  - name: "Typeform"
+    ats: greenhouse
+    slug: typeform
+  - name: "Calendly"
+    ats: greenhouse
+    slug: calendly
+  - name: "Contentful"
+    ats: greenhouse
+    slug: contentful
+  - name: "OneTrust"
+    ats: greenhouse
+    slug: onetrust
+  - name: "Abnormal Security"
+    ats: greenhouse
+    slug: abnormalsecurity
+  - name: "Checkr"
+    ats: greenhouse
+    slug: checkr
+  - name: "Justworks"
+    ats: greenhouse
+    slug: justworks
+  - name: "Lattice"
+    ats: greenhouse
+    slug: lattice
+  - name: "Culture Amp"
+    ats: greenhouse
+    slug: cultureamp
+  - name: "Pendo"
+    ats: greenhouse
+    slug: pendo
+  - name: "Motive"
+    ats: greenhouse
+    slug: motive
+  - name: "Bill.com"
+    ats: greenhouse
+    slug: billcom
+  - name: "LastPass"
+    ats: greenhouse
+    slug: lastpass
+  - name: "Dashlane"
+    ats: greenhouse
+    slug: dashlane
+  - name: "Wise"
+    ats: greenhouse
+    slug: wise
+  - name: "Monzo"
+    ats: greenhouse
+    slug: monzo
+  - name: "N26"
+    ats: greenhouse
+    slug: n26
+  - name: "Groww"
+    ats: greenhouse
+    slug: groww
+  - name: "AngelList"
+    ats: lever
+    slug: angellist
+  - name: "CRED"
+    ats: lever
+    slug: cred
+  - name: "Meesho"
+    ats: lever
+    slug: meesho
+  - name: "Gopuff"
+    ats: lever
+    slug: gopuff
+  - name: "Matillion"
+    ats: lever
+    slug: matillion
+  - name: "Outreach"
+    ats: lever
+    slug: outreach
+  - name: "Secureframe"
+    ats: lever
+    slug: secureframe
+  - name: "Wealthfront"
+    ats: lever
+    slug: wealthfront
+  - name: "OpenAI"
+    ats: ashby
+    slug: openai
+  - name: "Cohere"
+    ats: ashby
+    slug: cohere
+  - name: "ClickHouse"
+    ats: ashby
+    slug: clickhouse
+  - name: "ClickUp"
+    ats: ashby
+    slug: clickup
+  - name: "Miro"
+    ats: ashby
+    slug: miro
+  - name: "Sentry"
+    ats: ashby
+    slug: sentry
+  - name: "Snyk"
+    ats: ashby
+    slug: snyk
+  - name: "Supabase"
+    ats: ashby
+    slug: supabase
+  - name: "Render"
+    ats: ashby
+    slug: render
+  - name: "Replit"
+    ats: ashby
+    slug: replit
+  - name: "Railway"
+    ats: ashby
+    slug: railway
+  - name: "Temporal"
+    ats: ashby
+    slug: temporal
+  - name: "Airbyte"
+    ats: ashby
+    slug: airbyte
+  - name: "Astronomer"
+    ats: ashby
+    slug: astronomer
+  - name: "Prefect"
+    ats: ashby
+    slug: prefect
+  - name: "Monte Carlo"
+    ats: ashby
+    slug: montecarlodata
+  - name: "Hightouch"
+    ats: ashby
+    slug: hightouch
+  - name: "Zapier"
+    ats: ashby
+    slug: zapier
+  - name: "1Password"
+    ats: ashby
+    slug: 1password
+  - name: "Drata"
+    ats: ashby
+    slug: drata
+  - name: "Iterable"
+    ats: ashby
+    slug: iterable
+  - name: "Gorgias"
+    ats: ashby
+    slug: gorgias
+  - name: "Outschool"
+    ats: ashby
+    slug: outschool
+  - name: "BetterUp"
+    ats: ashby
+    slug: betterup
+  - name: "Recharge"
+    ats: ashby
+    slug: recharge
+
 # Big-name / India-market "product based companies" that most job seekers
 # mean by that phrase (Google, Amazon, Microsoft, Flipkart, Swiggy, Zoho,
 # etc.) mostly run custom or Workday-based career sites with no public
@@ -180,7 +448,7 @@ manual_check_links:
   - name: "Flipkart"
     url: "https://www.flipkartcareers.com/#!/joblist?category=Data%20Science"
   - name: "Swiggy"
-    url: "https://careers.swiggy.com/jobs?search=data%20engineer"
+    url: "https://careers.swiggy.com"
   - name: "Razorpay"
     url: "https://careers.razorpay.com/jobs?department=Engineering"
   - name: "Freshworks"
@@ -189,3 +457,16 @@ manual_check_links:
     url: "https://www.zoho.com/careers/"
   - name: "PhonePe"
     url: "https://www.phonepe.com/careers/job-openings/?search=data%20engineer"
+  # Added 2026-10-03 at user's request (Amex, BlackRock, Zomato, Blinkit
+  # explicitly named). None exposes a public Greenhouse/Lever/Ashby/
+  # SmartRecruiters API (checked directly), so they go here as pre-
+  # filtered search links rather than scored matches, same as the rest
+  # of this list.
+  - name: "American Express"
+    url: "https://careers.americanexpress.com"
+  - name: "BlackRock"
+    url: "https://careers.blackrock.com/search-jobs?k=data%20engineer"
+  - name: "Zomato"
+    url: "https://www.zomato.com/careers"
+  - name: "Blinkit"
+    url: "https://www.blinkit.com/careers"
