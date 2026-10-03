@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jyotish Bot</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+:root{--bg:#faf7f2;--panel:#ffffff;--ink:#2b2118;--muted:#7a6a5a;--line:#e6dccf;--accent:#b4531f;--accent-ink:#fff;
+--good:#2f7d4a;--bad:#b3261e;--warn:#9a6a00;--chip:#f3ebe0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17130f;--panel:#211b16;--ink:#efe6da;--muted:#a8998a;
+--line:#3a3028;--accent:#e07a3f;--accent-ink:#1b120c;--good:#6cc48c;--bad:#ff8a80;--warn:#e6b450;--chip:#2c241d}}
+:root[data-theme="dark"]{--bg:#17130f;--panel:#211b16;--ink:#efe6da;--muted:#a8998a;--line:#3a3028;--accent:#e07a3f;
+--accent-ink:#1b120c;--good:#6cc48c;--bad:#ff8a80;--warn:#e6b450;--chip:#2c241d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{margin:0;font-size:20px}header small{color:var(--muted)}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+label{display:block;font-size:13px;color:var(--muted)}
+input,select,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+button{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:9px 16px;font:inherit;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button:disabled{opacity:.5;cursor:wait}
+.places{border:1px solid var(--line);border-radius:8px;margin-top:4px;max-height:180px;overflow:auto;display:none}
+.places div{padding:6px 8px;cursor:pointer}.places div:hover{background:var(--chip)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button{background:var(--chip);color:var(--ink);padding:6px 12px}
+.tabs button.on{background:var(--accent);color:var(--accent-ink)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:6px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.scroll{overflow-x:auto}
+.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:1px 9px;margin:2px;font-size:13px}
+.charts{display:flex;flex-wrap:wrap;gap:16px}
+.charts figure{margin:0;flex:1 1 300px;max-width:420px}
+.charts figcaption{text-align:center;color:var(--muted);font-size:13px}
+svg text{fill:var(--ink)}svg line,svg rect{stroke:var(--muted)}
+#chatlog{min-height:200px;max-height:65vh;overflow:auto;padding:4px}
+.msg{padding:10px 12px;border-radius:10px;margin:8px 0}
+.msg.user{background:var(--chip);margin-left:15%}.msg.bot{border:1px solid var(--line)}
+.msg.bot table{font-size:13px}
+.note{color:var(--muted);font-size:13px}
+details{border-bottom:1px solid var(--line);padding:6px 0}summary{cursor:pointer}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>🪐 Jyotish Bot</h1><small>Parashari + Jaimini + Lal Kitab · every rule and exception checked</small>
+  <span style="flex:1"></span>
+  <button class="ghost" id="theme">◐</button>
+</header>
+<main>
+<section class="card" id="formCard">
+  <div class="grid">
+    <div><label>Name</label><input id="name"></div>
+    <div><label>Gender</label><select id="gender"><option value="">—</option><option value="M">Male</option><option value="F">Female</option></select></div>
+    <div><label>Birth date</label><input id="date" type="date"></div>
+    <div><label>Birth time (as exact as possible)</label><input id="time" type="time" step="1"></div>
+    <div style="grid-column:span 2"><label>Birth place</label><input id="place" placeholder="Type a city, e.g. Varanasi" autocomplete="off">
+      <div class="places" id="places"></div></div>
+    <div><label>Latitude</label><input id="lat" type="number" step="0.0001"></div>
+    <div><label>Longitude</label><input id="lon" type="number" step="0.0001"></div>
+    <div><label>Time zone (IANA or hours)</label><input id="tz" value="Asia/Kolkata"></div>
+  </div>
+  <details style="margin-top:10px"><summary>Calculation settings (texts differ on these)</summary>
+    <div class="grid" style="margin-top:8px">
+      <div><label>Ayanamsa</label><select id="ayanamsa"><option>lahiri</option><option>raman</option><option>krishnamurti</option><option>yukteshwar</option><option>true_chitra</option></select></div>
+      <div><label>Rahu/Ketu</label><select id="node_type"><option>mean</option><option>true</option></select></div>
+      <div><label>Dasha year (days)</label><select id="dasha_year"><option>365.25</option><option>365.2422</option><option>360</option></select></div>
+      <div><label>Chara karakas</label><select id="chara_karaka_count"><option>7</option><option>8</option></select></div>
+    </div>
+  </details>
+  <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+    <button id="go">Generate kundali</button><span id="formMsg" class="note"></span>
+  </div>
+</section>
+
+<section id="out" class="hidden">
+  <div class="tabs" id="tabs"></div>
+  <div id="panes"></div>
+</section>
+<p class="note">Astrology is a traditional interpretive system, not a validated science. Readings here are the
+classical rules applied mechanically plus AI interpretation; do not make medical, legal or financial decisions on them alone.</p>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+const AB = {Sun:"Su",Moon:"Mo",Mars:"Ma",Mercury:"Me",Jupiter:"Ju",Venus:"Ve",Saturn:"Sa",Rahu:"Ra",Ketu:"Ke",Lagna:"Asc"};
+let D = null, SID = null, AI = false;
+
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch(e) {}
+$("#theme").onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const nx = cur === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = nx;
+  try { localStorage.setItem("theme", nx); } catch(e) {}
+};
+fetch("/api/status").then(r => r.json()).then(s => AI = s.ai_enabled);
+
+let tmr;
+$("#place").addEventListener("input", e => {
+  clearTimeout(tmr); const q = e.target.value.trim(); if (q.length < 3) return;
+  tmr = setTimeout(async () => {
+    const r = await fetch("/api/geocode?q=" + encodeURIComponent(q)); if (!r.ok) return;
+    const list = await r.json(); const box = $("#places"); box.innerHTML = "";
+    list.forEach(p => { const d = document.createElement("div"); d.textContent = p.name;
+      d.onclick = () => { $("#place").value = p.name; $("#lat").value = p.lat; $("#lon").value = p.lon; $("#tz").value = p.tz; box.style.display = "none"; };
+      box.appendChild(d); });
+    box.style.display = list.length ? "block" : "none";
+  }, 350);
+});
+
+$("#go").onclick = async () => {
+  const body = {name:$("#name").value, gender:$("#gender").value, date:$("#date").value, time:$("#time").value,
+    tz:$("#tz").value, lat:parseFloat($("#lat").value), lon:parseFloat($("#lon").value), place:$("#place").value,
+    settings:{ayanamsa:$("#ayanamsa").value, node_type:$("#node_type").value, dasha_year:parseFloat($("#dasha_year").value),
+      chara_karaka_count:parseInt($("#chara_karaka_count").value)}};
+  if (!body.date || !body.time || isNaN(body.lat) || isNaN(body.lon)) { $("#formMsg").textContent = "Fill date, time and place."; return; }
+  $("#go").disabled = true; $("#formMsg").textContent = "Calculating every factor…";
+  try {
+    const r = await fetch("/api/chart", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+    if (!r.ok) throw new Error((await r.json()).detail);
+    const j = await r.json(); D = j.dossier; SID = j.session_id; render(); $("#formMsg").textContent = "";
+  } catch(e) { $("#formMsg").textContent = "Error: " + e.message; }
+  $("#go").disabled = false;
+};
+
+// ---------- North Indian chart ----------
+const POS = {1:[200,110],2:[100,45],3:[45,100],4:[110,200],5:[45,300],6:[100,355],7:[200,290],8:[300,355],9:[355,300],10:[290,200],11:[355,100],12:[300,45]};
+const NUMPOS = {1:[200,180],2:[100,20],3:[20,100],4:[180,200],5:[20,300],6:[100,385],7:[200,222],8:[300,385],9:[380,300],10:[222,200],11:[380,100],12:[300,20]};
+function northChart(signs, lagnaSign, retro = {}) {
+  const byHouse = {}; for (let h = 1; h <= 12; h++) byHouse[h] = [];
+  for (const [p, s] of Object.entries(signs)) { if (p === "Lagna") continue;
+    const h = ((SIGNS.indexOf(s) - lagnaSign + 12) % 12) + 1; byHouse[h].push(AB[p] + (retro[p] ? "ᴿ" : "")); }
+  let g = `<svg viewBox="0 0 400 400" role="img" aria-label="North Indian chart"><rect x="1" y="1" width="398" height="398" fill="none" stroke-width="1.5"/>
+  <line x1="0" y1="0" x2="400" y2="400"/><line x1="400" y1="0" x2="0" y2="400"/>
+  <line x1="200" y1="0" x2="0" y2="200"/><line x1="0" y1="200" x2="200" y2="400"/><line x1="200" y1="400" x2="400" y2="200"/><line x1="400" y1="200" x2="200" y2="0"/>`;
+  for (let h = 1; h <= 12; h++) {
+    const [nx, ny] = NUMPOS[h]; g += `<text x="${nx}" y="${ny}" font-size="11" text-anchor="middle" opacity=".6">${(lagnaSign + h - 1) % 12 + 1}</text>`;
+    const [x, y] = POS[h]; const items = byHouse[h];
+    items.forEach((t, i) => { g += `<text x="${x}" y="${y + (i - (items.length - 1) / 2) * 16}" font-size="14" font-weight="600" text-anchor="middle">${esc(t)}</text>`; });
+  }
+  return g + "</svg>";
+}
+
+// ---------- tabs ----------
+const TABS = [["Kundali", kundali], ["Planets", planets], ["Yogas & Doshas", yogas], ["Dasha", dashaTab],
+  ["Life & Dates", lifeTab], ["Strength", strength], ["Transits", transitTab], ["Remedies", remedyTab],
+  ["Jaimini", jaiminiTab], ["Birth time", btTab], ["Chat 💬", chatTab]];
+function render() {
+  $("#out").classList.remove("hidden"); const tabs = $("#tabs"), panes = $("#panes"); tabs.innerHTML = ""; panes.innerHTML = "";
+  TABS.forEach(([name, fn], i) => {
+    const b = document.createElement("button"); b.textContent = name; tabs.appendChild(b);
+    const p = document.createElement("div"); p.className = "card" + (i ? " hidden" : ""); p.innerHTML = fn(); panes.appendChild(p);
+    b.onclick = () => { [...tabs.children].forEach(x => x.classList.remove("on")); b.classList.add("on");
+      [...panes.children].forEach(x => x.classList.add("hidden")); p.classList.remove("hidden"); };
+    if (!i) b.classList.add("on");
+  });
+  wireChat(); wireVarga();
+}
+const retroMap = () => Object.fromEntries(D.planets.map(p => [p.planet, p.retrograde && !["Rahu","Ketu"].includes(p.planet)]));
+const pl = p => D.planets.find(x => x.planet === p);
+
+function kundali() {
+  const d1 = Object.fromEntries(D.planets.map(p => [p.planet, p.sign]));
+  const L = SIGNS.indexOf(D.lagna.sign);
+  const opts = Object.keys(D.vargas).map(k => `<option ${k==="D9"?"selected":""}>${k}</option>`).join("");
+  const c = D.vimshottari.current;
+  return `<div class="charts"><figure>${northChart(d1, L, retroMap())}<figcaption>D1 Rashi · Lagna ${esc(D.lagna.sign)} ${esc(D.lagna.degree)}</figcaption></figure>
+  <figure><div id="vargaSvg"></div><figcaption><select id="vargaSel" style="width:auto">${opts}</select> <span id="vargaCap"></span></figcaption></figure></div>
+  <div class="grid" style="margin-top:12px">
+   <div><b>Lagna</b><br>${esc(D.lagna.sign)} ${esc(D.lagna.degree)} · ${esc(D.lagna.nakshatra)} pada ${D.lagna.pada}</div>
+   <div><b>Moon (Rashi)</b><br>${esc(D.moon.sign)} · ${esc(D.moon.nakshatra)} pada ${D.moon.pada} · ${esc(D.moon.paksha)}</div>
+   <div><b>Running dasha</b><br>${esc(c.mahadasha)} / ${esc(c.antardasha)} / ${esc(c.pratyantar)}<br><span class="note">AD ends ${esc(c.ad_ends)}</span></div>
+   <div><b>Saturn now</b><br>${esc(D.transits_now.sade_sati_or_dhaiya || "No Sade Sati / Dhaiya")}</div>
+  </div>`;
+}
+function wireVarga() {
+  const sel = $("#vargaSel"); if (!sel) return;
+  const draw = () => { const v = D.vargas[sel.value]; const signs = {}; Object.keys(AB).forEach(p => { if (p !== "Lagna") signs[p] = v[p]; });
+    $("#vargaSvg").innerHTML = northChart(signs, SIGNS.indexOf(v.Lagna)); $("#vargaCap").textContent = v.meaning; };
+  sel.onchange = draw; draw();
+}
+function planets() {
+  const rows = D.planets.map(p => `<tr><td><b>${p.planet}</b>${p.retrograde && !["Rahu","Ketu"].includes(p.planet) ? " (R)" : ""}</td>
+    <td>${p.sign} ${p.degree}</td><td>${p.house}</td><td>${p.nakshatra}-${p.pada} <span class="note">(${p.nakshatra_lord})</span></td>
+    <td class="${["Exalted","Own","Moolatrikona"].includes(p.dignity)?"good":p.dignity==="Debilitated"?"bad":""}">${p.dignity}</td>
+    <td>${p.navamsa}${p.vargottama?" ✦":""}</td><td>${esc(D.functional_nature.planets[p.planet].verdict)}</td>
+    <td class="note">${esc(p.baladi_avastha)}</td></tr>`).join("");
+  const cond = Object.entries(D.planet_condition).map(([p, c]) => `<details><summary><b>${p}</b> — net ${c.net >= 0 ? "+" : ""}${c.net}</summary>
+    <div class="good">+ ${c.strengths.map(esc).join("<br>+ ")}</div><div class="bad">− ${c.weaknesses.map(esc).join("<br>− ") || "none"}</div></details>`).join("");
+  const comb = Object.entries(D.combustion).map(([p, c]) => `<span class="chip bad">${p} combust ${c.distance_from_sun}°</span>`).join("") || "none";
+  const war = D.planetary_war.map(w => `<span class="chip">${w.planets.join(" vs ")} → ${w.winner} wins</span>`).join("") || "none";
+  const gand = D.gandanta.map(g => `<span class="chip warn">${g.point} gandanta</span>`).join("") || "none";
+  const ch = D.bhava_chalit_shifts.map(s => `<span class="chip">${s.planet}: house ${s.whole_sign_house} → chalit ${s.chalit_house}</span>`).join("") || "none";
+  return `<div class="scroll"><table><tr><th>Planet</th><th>Position</th><th>House</th><th>Nakshatra</th><th>Dignity</th><th>D9</th><th>Functional</th><th>Avastha</th></tr>${rows}</table></div>
+  <p><b>Combustion:</b> ${comb}<br><b>Planetary war:</b> ${war}<br><b>Gandanta:</b> ${gand}<br><b>Bhava chalit shifts:</b> ${ch}</p>
+  <h3>Every strength and weakness per planet</h3>${cond}`;
+}
+const verdictCls = v => /cancel|NOT|absent/.test(v) ? "bad" : /weak|reduced/.test(v) ? "warn" : "good";
+function yogas() {
+  const y = D.yogas.map(y => `<details><summary><b>${esc(y.name)}</b> — <span class="${verdictCls(y.verdict)}">${esc(y.verdict)}</span></summary>
+    <div>${y.conditions.map(esc).join("<br>")}</div>
+    ${y.cancellations.length ? `<div class="bad">Cancelled by: ${y.cancellations.map(esc).join("; ")}</div>` : ""}
+    ${y.weakenings.length ? `<div class="warn">Weakened by: ${y.weakenings.map(esc).join("; ")}</div>` : ""}
+    <div class="note">Result: ${esc(y.result)} · Source: ${esc(y.source)}</div></details>`).join("");
+  const d = D.doshas.map(x => `<details ${x.present ? "open" : ""}><summary><b>${esc(x.name)}</b> — <span class="${x.present ? (x.cancellations.length ? "warn" : "bad") : "good"}">${esc(x.status)}</span>${x.severity ? ` · severity ${esc(x.severity)}` : ""}</summary>
+    ${x.present ? `<div>${esc(JSON.stringify(x.details))}</div>${x.cancellations.length ? `<div class="warn">Cancellations: ${x.cancellations.map(esc).join("; ")}</div>` : ""}<div>Effect: ${esc(x.effect)}</div>` : ""}
+    <div class="note">${esc(x.classical_status)}</div></details>`).join("");
+  return `<h3>Yogas</h3>${y}<h3>Doshas</h3>${d}`;
+}
+function dashaTab() {
+  const v = D.vimshottari, now = D.generated_for_date;
+  const md = v.mahadashas.map(m => `<details ${m.start <= now && now < m.end ? "open" : ""}><summary><b>${m.lord}</b> ${m.start} → ${m.end} <span class="note">(age ${m.age_start})</span></summary>
+    <table>${m.antardashas.map(a => `<tr ${a.start <= now && now < a.end ? 'style="font-weight:700"' : ""}><td>${m.lord}/${a.lord}</td><td>${a.start}</td><td>${a.end}</td></tr>`).join("")}</table></details>`).join("");
+  const hv = D.health_vigilance_periods.map(h => `<tr><td>${h.md}/${h.ad}</td><td>${h.start} → ${h.end}</td><td class="note">${h.why.join(", ")}</td></tr>`).join("");
+  return `<p>Birth dasha: <b>${v.birth_dasha_lord}</b>, balance ${v.balance_at_birth_years} years · year = ${v.year_length_days} days</p>${md}
+  <h3>Health-vigilance periods (maraka / 6-8-12 lords)</h3><div class="scroll"><table>${hv}</table></div>`;
+}
+function lifeTab() {
+  return Object.entries(D.life_areas).map(([k, a]) => {
+    const p = a.promise;
+    const w = a.timing.windows.map(x => `<tr class="${x.is_past ? "note" : ""}"><td>${x.start} → ${x.end}<br><span class="note">peak ${x.peak} · age ${x.age_at_start}${x.is_past ? " · past" : ""}</span></td>
+      <td>${x.md}/${x.ad}</td><td class="${/high/.test(x.confidence) ? "good" : /medium/.test(x.confidence) ? "warn" : ""}">${x.confidence}</td><td class="note">${x.factors.map(esc).join("<br>")}</td></tr>`).join("");
+    return `<details><summary><b>${esc(p.area)}</b> — promise <span class="${/very weak|vulnerable/.test(p.verdict) ? "bad" : /weak/.test(p.verdict) ? "warn" : "good"}">${esc(p.verdict)}</span> (score ${p.score})</summary>
+      <div class="good">+ ${p.favourable.map(esc).join("<br>+ ")}</div><div class="bad">− ${p.unfavourable.map(esc).join("<br>− ") || "none"}</div>
+      <div class="scroll"><table><tr><th>Window</th><th>Dasha</th><th>Confidence</th><th>Factors</th></tr>${w}</table></div></details>`;
+  }).join("") + `<p class="note">${esc(Object.values(D.life_areas)[0].timing.method)}</p>`;
+}
+function strength() {
+  const sb = Object.entries(D.shadbala.planets).map(([p, s]) => `<tr><td>${p}</td><td>${s.sthana}</td><td>${s.dig}</td><td>${s.kala}</td><td>${s.chesta}</td><td>${s.naisargika}</td><td>${s.drik}</td>
+    <td><b>${s.rupas}</b> / ${s.required_rupas}</td><td class="${s.ratio >= 1 ? "good" : "bad"}">${s.ratio}×</td></tr>`).join("");
+  const sav = D.ashtakavarga.sav_by_house.map(h => `<td class="${h.quality === "weak" ? "bad" : /strong|good/.test(h.quality) ? "good" : ""}">${h.bindus}</td>`).join("");
+  const bav = Object.entries(D.ashtakavarga.bav_by_sign).map(([p, r]) => `<tr><td>${p}</td>${Object.values(r).map(x => `<td>${x}</td>`).join("")}</tr>`).join("");
+  return `<h3>Shadbala (virupas; total in rupas)</h3><div class="scroll"><table><tr><th></th><th>Sthana</th><th>Dig</th><th>Kala</th><th>Chesta</th><th>Naisargika</th><th>Drik</th><th>Total</th><th>Ratio</th></tr>${sb}</table></div>
+  <p class="note">${D.shadbala.approximations.map(esc).join(" ")}</p>
+  <h3>Sarvashtakavarga by house</h3><div class="scroll"><table><tr>${[...Array(12)].map((_, i) => `<th>H${i + 1}</th>`).join("")}</tr><tr>${sav}</tr></table></div>
+  <h3>Bhinnashtakavarga by sign</h3><div class="scroll"><table><tr><th></th>${SIGNS.map(s => `<th>${s.slice(0, 3)}</th>`).join("")}</tr>${bav}</table></div>`;
+}
+function transitTab() {
+  const t = D.transits_now;
+  const rows = t.planets.map(p => `<tr><td>${p.planet}${p.retrograde && !["Rahu","Ketu"].includes(p.planet) ? " (R)" : ""}</td><td>${p.sign} ${p.degree}°</td><td>${p.house_from_lagna}</td><td>${p.house_from_moon}</td>
+    <td class="${/^favourable;|^favourable$/.test(p.verdict) ? "good" : /obstructed/.test(p.verdict) ? "warn" : "bad"}">${esc(p.verdict)}</td></tr>`).join("");
+  const sc = D.saturn_cycles.map(s => `<tr><td>${s.type}</td><td>${s.start} → ${s.end}</td></tr>`).join("");
+  return `<p>As of ${t.date} · Saturn ${t.saturn_from_moon} from Moon · ${esc(t.sade_sati_or_dhaiya || "no Sade Sati/Dhaiya")} · double transit on houses ${t.double_transit_houses_from_lagna.join(", ")}</p>
+  <div class="scroll"><table><tr><th>Planet</th><th>Position</th><th>From Lagna</th><th>From Moon</th><th>Verdict (gochar + vedha + BAV)</th></tr>${rows}</table></div>
+  <h3>Saturn cycles over life</h3><table>${sc}</table>`;
+}
+function remedyTab() {
+  const g = D.remedies.gemstones;
+  const recs = g.recommendations.map(r => `<tr><td>${r.planet}</td><td>${esc(r.gem)}<br><span class="note">${esc(r.upratna)}</span></td>
+    <td class="${/^recommended/.test(r.status) ? "good" : /^avoid/.test(r.status) ? "bad" : "warn"}">${esc(r.status)}</td>
+    <td>${esc(r.finger)}${r.alt_finger ? `<br><span class="note">alt: ${esc(r.alt_finger)}</span>` : ""}</td><td class="note">${esc(r.metal)} · ${esc(r.day)} · ${esc(r.weight)}</td>
+    <td class="note">${r.reasons.map(esc).join("<br>")}${r.cautions.length ? `<br><span class="warn">⚠ ${r.cautions.map(esc).join("<br>⚠ ")}</span>` : ""}</td></tr>`).join("");
+  const md = D.remedies.mantra_daan.map(m => `<tr><td>${m.planet}</td><td>${esc(m.why)}</td><td>${esc(m.beej_mantra)}<br><span class="note">${m.japa_count} japa · ${esc(m.worship)}</span></td><td>${esc(m.daan)}</td></tr>`).join("");
+  const lk = D.remedies.lal_kitab;
+  const lkr = lk.planets.map(p => `<tr><td>${p.planet}</td><td>${p.lk_house}</td><td>${esc(p.state)}</td><td>${p.soya_sleeping === null ? "—" : p.soya_sleeping ? "sleeping" : "awake"}</td><td class="note">${esc(p.general_remedy)}</td></tr>`).join("");
+  return `<h3>Gemstones</h3>${g.conflicts.length ? `<p class="bad">${g.conflicts.map(esc).join("<br>")}</p>` : ""}
+  <div class="scroll"><table><tr><th>Planet</th><th>Gem</th><th>Status</th><th>Finger</th><th>How</th><th>Why / cautions</th></tr>${recs}</table></div>
+  <ul class="note">${g.general_rules.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
+  <h3>Mantra & daan</h3><div class="scroll"><table>${md}</table></div>
+  <h3>Lal Kitab</h3><div class="scroll"><table><tr><th>Planet</th><th>LK house</th><th>State</th><th>Soya</th><th>Remedy</th></tr>${lkr}</table></div>
+  <p><b>Rin (karmic debts):</b> ${lk.rin.map(r => `<span class="chip warn">${esc(r.rin)} (${r.caused_by.join(", ")})</span>`).join("") || "none"}</p>
+  ${lk.rin.map(r => `<div class="note">${esc(r.rin)}: ${esc(r.remedy)}</div>`).join("")}
+  <ul class="note">${lk.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>`;
+}
+function jaiminiTab() {
+  const j = D.jaimini;
+  const ck = j.chara_karakas.map(k => `<tr><td>${esc(k.karaka)}</td><td>${k.planet}</td><td>${k.degree_used}°</td></tr>`).join("");
+  const ap = Object.entries(j.arudha_padas).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.sign}</td><td>${v.house_from_lagna}</td><td>${v.occupants.join(", ")}</td></tr>`).join("");
+  const l = j.longevity;
+  return `<h3>Chara karakas (${esc(j.scheme)})</h3>${j.other_scheme_differs ? `<p class="warn">The other karaka scheme gives different karakas — readings that depend on them are marked uncertain.</p>` : ""}
+  <table>${ck}</table><p>Karakamsha: <b>${esc(j.karakamsha.karakamsha_sign)}</b> (AK ${j.karakamsha.atmakaraka})</p>
+  <h3>Arudha padas</h3><div class="scroll"><table><tr><th>Pada</th><th>Sign</th><th>House</th><th>Occupants</th></tr>${ap}</table></div>
+  <h3>Longevity compartment (Jaimini three pairs)</h3><table>${l.pairs.map(p => `<tr><td>${esc(p.pair)}</td><td>${esc(p.span)}</td></tr>`).join("")}</table>
+  <p>Result: <b>${esc(l.category)}</b> (${esc(l.rule_used)}) ${l.modifiers.map(m => `<br><span class="note">${esc(m)}</span>`).join("")}
+  ${l.reality_check ? `<br><span class="warn">${esc(l.reality_check)}</span>` : ""}<br><span class="note">${esc(l.caution)}</span></p>`;
+}
+function btTab() {
+  const b = D.birth_time_sensitivity;
+  const rows = Object.entries(b.points).map(([k, v]) => `<tr><td>${k}</td><td>${esc(v.value)}</td><td>${v.stable_from_minutes} to +${v.stable_to_minutes} min</td>
+    <td class="${/highly/.test(v.reliability) ? "bad" : /sensitive/.test(v.reliability) ? "warn" : "good"}">${v.reliability}</td></tr>`).join("");
+  const vr = Object.entries(D.variants_in_use).map(([k, v]) => `<details><summary>${esc(k)}: <b>${esc(typeof v.choice === "object" ? JSON.stringify(v.choice) : v.choice)}</b></summary><div class="note">${esc(v.note)}</div></details>`).join("");
+  return `<h3>How much your birth time matters</h3><table><tr><th>Point</th><th>Value</th><th>Stays same within</th><th>Reliability</th></tr>${rows}</table>
+  <p class="note">${esc(b.limits)} In chat, give dated past events (e.g. "married 2015-02-10, job 2013-07-01") and ask to rectify.</p>
+  <h3>Where the classical texts disagree</h3>${vr}`;
+}
+
+// ---------- chat ----------
+function chatTab() {
+  if (!AI || !SID) return `<p>Chat needs an Anthropic API key on the server. Start it with <code>ANTHROPIC_API_KEY=sk-ant-... uvicorn app:app</code>
+    and generate the chart again. Every calculation in the other tabs works without it.</p>`;
+  return `<div id="chatlog"></div><div style="display:flex;gap:8px;margin-top:8px">
+    <textarea id="chatIn" rows="2" placeholder="e.g. Meri shaadi kab hogi? / When will I change jobs? / Is my 2027 bad?"></textarea>
+    <button id="chatGo">Ask</button></div>
+    <div style="margin-top:6px">${["Give me a full honest life reading", "Marriage: kab aur kaisi?", "Career peaks and falls with dates",
+      "Which gemstone should I wear, which to avoid?", "What does the next 5 years look like?"].map(q => `<span class="chip" style="cursor:pointer" data-q="${esc(q)}">${esc(q)}</span>`).join("")}</div>`;
+}
+function wireChat() {
+  const go = $("#chatGo"); if (!go) return;
+  const send = async (text) => {
+    if (!text.trim()) return; const log = $("#chatlog");
+    log.insertAdjacentHTML("beforeend", `<div class="msg user">${esc(text)}</div>`);
+    const bot = document.createElement("div"); bot.className = "msg bot"; bot.innerHTML = '<span class="note">Checking every factor…</span>'; log.appendChild(bot);
+    go.disabled = true; $("#chatIn").value = ""; let md = "", status = "";
+    try {
+      const r = await fetch("/api/chat", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({session_id:SID, message:text})});
+      const rd = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
+      while (true) { const {done, value} = await rd.read(); if (done) break; buf += dec.decode(value, {stream:true});
+        let i; while ((i = buf.indexOf("\n\n")) >= 0) { const line = buf.slice(0, i).replace(/^data: /, ""); buf = buf.slice(i + 2);
+          const ev = JSON.parse(line);
+          if (ev.type === "text") md += ev.data; else if (ev.type === "tool") status = `<div class="note">⚙ ${esc(ev.data)}…</div>`;
+          else if (ev.type === "error") md += `\n\n**Error:** ${ev.data}`;
+          bot.innerHTML = (window.marked && window.DOMPurify ? DOMPurify.sanitize(marked.parse(md || "…")) : `<pre style="white-space:pre-wrap">${esc(md)}</pre>`) + (ev.type === "done" ? "" : status); log.scrollTop = log.scrollHeight; } }
+    } catch(e) { bot.innerHTML += `<p class="bad">${esc(e.message)}</p>`; }
+    go.disabled = false;
+  };
+  go.onclick = () => send($("#chatIn").value);
+  $("#chatIn").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send($("#chatIn").value); } });
+  document.querySelectorAll("[data-q]").forEach(c => c.onclick = () => send(c.dataset.q));
+}
+</script>
+</body>
+</html>
