@@ -1,0 +1,687 @@
+<title>Jyotish Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Tiro+Devanagari+Sanskrit&display=swap">
+<style>
+/* Layout: a working panel of saved people + birth details beside a tabbed reading; stacks to one column on phones. */
+:root {
+  --bg: #f4f3f9; --surface: #ffffff; --ink: #1d1a38; --muted: #5d5a78; --line: #dddbe9; --chip: #ebe9f4;
+  --accent: #b35a00; --accent-soft: #fbe9d4; --on-accent: #ffffff;
+  --good: #1d7a4c; --warn: #9a6200; --bad: #b42318; --chart-fill: #faf3ea;
+  --display: "Tiro Devanagari Sanskrit", "Noto Serif Devanagari", Georgia, serif;
+  --body: "Hind", "Noto Sans Devanagari", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111022; --surface: #1a1930; --ink: #ebe8f8; --muted: #a29fc0; --line: #2e2c4a; --chip: #24223d;
+  --accent: #f0a646; --accent-soft: #3a2a14; --on-accent: #1a1206;
+  --good: #6fd19b; --warn: #f0c45a; --bad: #ff8f84; --chart-fill: #221f36; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111022; --surface: #1a1930; --ink: #ebe8f8; --muted: #a29fc0; --line: #2e2c4a; --chip: #24223d;
+  --accent: #f0a646; --accent-soft: #3a2a14; --on-accent: #1a1206;
+  --good: #6fd19b; --warn: #f0c45a; --bad: #ff8f84; --chart-fill: #221f36; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; }
+header.top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+header.top h1 { font: 400 1.9rem/1.1 var(--display); margin: 0; letter-spacing: .01em; }
+header.top h1 span { color: var(--accent); }
+header.top p { margin: 0; color: var(--muted); font-size: .92rem; }
+.app { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "people report" "form report"; gap: 20px; align-items: start; }
+#peoplePanel { grid-area: people; } #formPanel { grid-area: form; } #report { grid-area: report; }
+@media (max-width: 860px) { .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "people" "report" "form"; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
+h2 { font: 400 1.25rem/1.2 var(--display); margin: 0 0 10px; text-wrap: balance; }
+h3 { font: 600 1rem/1.3 var(--body); margin: 18px 0 8px; }
+.eyebrow { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+input, select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.form { display: grid; gap: 10px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+button { font: 600 .95rem var(--body); border-radius: 8px; border: 1px solid transparent; padding: 9px 14px; cursor: pointer; background: var(--accent); color: var(--on-accent); }
+button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+button.link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 500; }
+button:disabled { opacity: .55; cursor: progress; }
+.combo { position: relative; }
+.combo ul { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; max-height: 240px; overflow: auto; box-shadow: 0 8px 24px rgb(0 0 0 / .14); }
+.combo li { padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: .92rem; }
+.combo li small { color: var(--muted); }
+.combo li[aria-selected="true"], .combo li:hover { background: var(--chip); }
+.people { display: grid; gap: 6px; }
+.person { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: var(--bg); }
+.person.on { border-color: var(--accent); background: var(--accent-soft); }
+.person b { font-weight: 600; }
+.person span { color: var(--muted); font-size: .82rem; }
+.person .grow { flex: 1; min-width: 0; }
+.note { color: var(--muted); font-size: .85rem; }
+.msg-line { min-height: 1.4em; font-size: .88rem; }
+.example-flag { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 10px; font-size: .78rem; font-weight: 600; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 12px 0 4px; }
+.summary div { border-left: 3px solid var(--accent); padding-left: 10px; min-width: 0; }
+.summary b { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0 12px; }
+.tabs button { background: var(--chip); color: var(--ink); font-weight: 500; padding: 6px 12px; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.charts { display: flex; flex-wrap: wrap; gap: 18px; }
+.charts figure { margin: 0; flex: 1 1 280px; max-width: 420px; min-width: 0; }
+.charts figcaption { font-size: .85rem; color: var(--muted); text-align: center; margin-top: 6px; display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; }
+.charts select { width: auto; padding: 4px 8px; }
+svg.kundali { width: 100%; height: auto; display: block; }
+svg.kundali .frame { fill: var(--chart-fill); stroke: var(--muted); }
+svg.kundali line { stroke: var(--muted); stroke-width: 1; }
+svg.kundali .lag { fill: var(--accent-soft); stroke: none; }
+svg.kundali text { fill: var(--ink); font-family: var(--body); }
+svg.kundali .num { fill: var(--muted); font-size: 11px; }
+svg.kundali .pl { font-size: 14px; font-weight: 600; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: .8rem; }
+td.mono, .mono { font-family: var(--mono); font-size: .85rem; }
+.good { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+.pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: .78rem; font-weight: 600; background: var(--chip); }
+.pill.good { background: color-mix(in srgb, var(--good) 14%, transparent); }
+.pill.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.pill.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); }
+details.item { border-bottom: 1px solid var(--line); padding: 8px 0; }
+details.item summary { cursor: pointer; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+details.item .body { padding: 6px 0 4px 2px; display: grid; gap: 4px; font-size: .92rem; }
+ul.plain { margin: 0; padding-left: 18px; }
+.chat { display: grid; gap: 10px; }
+.log { display: grid; gap: 10px; max-height: 64vh; overflow-y: auto; padding-right: 4px; }
+.bubble { padding: 10px 14px; border-radius: 12px; min-width: 0; overflow-wrap: anywhere; }
+.bubble.user { background: var(--chip); justify-self: end; max-width: 85%; }
+.bubble.bot { border: 1px solid var(--line); background: var(--bg); }
+.bubble.bot table { font-size: .85rem; }
+.bubble.bot :is(p, ul, ol) { margin: 6px 0; }
+.bubble.bot h1, .bubble.bot h2, .bubble.bot h3 { font: 600 1.02rem var(--body); margin: 10px 0 4px; }
+.composer { display: flex; gap: 8px; align-items: flex-end; }
+.composer textarea { resize: vertical; min-height: 48px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { background: var(--chip); color: var(--ink); font-weight: 500; font-size: .85rem; padding: 5px 10px; }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .88rem; }
+@media (prefers-reduced-motion: no-preference) { .bubble.bot.typing::after { content: "▍"; animation: blink 1s steps(2) infinite; color: var(--accent); } @keyframes blink { 50% { opacity: 0 } } }
+footer { margin-top: 24px; font-size: .82rem; color: var(--muted); max-width: 70ch; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Jyotish <span>Bot</span></h1>
+    <p>Parashari + Jaimini + Lal Kitab · every rule checked with its exceptions</p>
+  </header>
+
+  <div class="app">
+      <section class="panel" id="peoplePanel" aria-labelledby="peopleH">
+        <h2 id="peopleH">Saved kundalis</h2>
+        <div class="people" id="people"><p class="note">Charts you generate are saved here so you never re-type birth details.</p></div>
+        <button class="ghost" id="newBtn" style="margin-top:10px;width:100%">+ New person</button>
+      </section>
+
+      <section class="panel" id="formPanel" aria-labelledby="formH">
+        <h2 id="formH">Birth details</h2>
+        <form class="form" id="form" autocomplete="off">
+          <label>Name <input id="f_name" placeholder="e.g. Bhargavi"></label>
+          <div class="row2">
+            <label>Date <input id="f_date" type="date" required></label>
+            <label>Time <input id="f_time" type="time" step="1" required></label>
+          </div>
+          <label>Gender <select id="f_gender"><option value="">Not set</option><option value="F">Female</option><option value="M">Male</option></select></label>
+          <div class="combo">
+            <label>Birth place <input id="f_place" placeholder="Start typing a city" role="combobox" aria-expanded="false" aria-controls="placeList"></label>
+            <ul id="placeList" role="listbox" hidden></ul>
+          </div>
+          <details>
+            <summary class="note">Coordinates and time zone <span id="coordSummary"></span></summary>
+            <div class="form" style="margin-top:8px">
+              <div class="row2">
+                <label>Latitude <input id="f_lat" type="number" step="0.0001" required></label>
+                <label>Longitude <input id="f_lon" type="number" step="0.0001" required></label>
+              </div>
+              <label>Time zone <input id="f_tz" value="Asia/Kolkata" placeholder="Asia/Kolkata or 5.5"></label>
+              <p class="note">Your city isn't listed? Find its latitude/longitude on any map and type them here.</p>
+            </div>
+          </details>
+          <details>
+            <summary class="note">Calculation settings</summary>
+            <div class="form" style="margin-top:8px">
+              <label>Dasha year length <select id="f_year"><option value="365.25">365.25 days (common)</option><option value="365.2422">365.2422 days (solar)</option><option value="360">360 days (savana)</option></select></label>
+              <label>Chara karakas <select id="f_kar"><option value="7">7 (Jaimini Sutras)</option><option value="8">8 (BPHS, with Rahu)</option></select></label>
+              <p class="note">Lahiri ayanamsa and mean nodes are used, as in most Indian almanacs.</p>
+            </div>
+          </details>
+          <button type="submit" id="goBtn">Make kundali</button>
+          <div class="msg-line note" id="formMsg" role="status"></div>
+        </form>
+      </section>
+
+    <section class="panel" id="report" aria-live="polite">
+      <div id="reportHead"></div>
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div id="panes"></div>
+    </section>
+  </div>
+
+  <footer>Astrology is a traditional interpretive system, not a validated science. The engine applies the classical rules mechanically;
+    the Ask tab adds AI interpretation. Don't make medical, legal or money decisions on it alone.</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="astro.js"></script>
+<script src="engine-core.js"></script>
+<script src="engine-rules.js"></script>
+<script src="engine-time.js"></script>
+<script src="cities.js"></script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const SIGNS = J.SIGNS;
+const AB = { Sun: "Su", Moon: "Mo", Mars: "Ma", Mercury: "Me", Jupiter: "Ju", Venus: "Ve", Saturn: "Sa", Rahu: "Ra", Ketu: "Ke" };
+const EXAMPLE = { id: "example", name: "Example person", y: 1990, mo: 5, d: 15, h: 10, mi: 30, s: 0, tz: "Asia/Kolkata",
+  lat: 28.6139, lon: 77.209, place: "New Delhi, Delhi, India", gender: "F", settings: {} };
+
+const state = { people: [], current: null, dossier: null, chart: null, tab: "kundali", chats: {}, store: null };
+
+// ------------------------------------------------------------------ storage (private per viewer)
+const Store = {
+  async init() {
+    try {
+      const claude = window.claude;
+      if (!claude || !claude.use) return this.local();
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      const uid = user ? await user.id() : null;
+      if (!db || !uid) return this.local();
+      const base = db.doc(`data/users/${uid}/profile`);
+      this.kind = "db"; this.charts = base.collection("charts"); this.chats = base.collection("chats");
+      return true;
+    } catch (e) { return this.local(); }
+  },
+  local() { this.kind = "local"; return false; },
+  readLocal(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } },
+  writeLocal(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  async listPeople() {
+    if (this.kind === "db") {
+      try { const snap = await this.charts.get(); return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0)); }
+      catch (e) { return []; }
+    }
+    return this.readLocal("jy_people", []);
+  },
+  async savePerson(p) {
+    const rec = { ...p, savedAt: Date.now() };
+    if (this.kind === "db") { try { await this.charts.doc(p.id).set(rec); return true; } catch (e) { return false; } }
+    const all = this.readLocal("jy_people", []).filter(x => x.id !== p.id); all.unshift(rec); this.writeLocal("jy_people", all); return true;
+  },
+  async deletePerson(id) {
+    if (this.kind === "db") { try { await this.charts.doc(id).delete(); await this.chats.doc(id).delete(); } catch (e) {} return; }
+    this.writeLocal("jy_people", this.readLocal("jy_people", []).filter(x => x.id !== id)); try { localStorage.removeItem("jy_chat_" + id); } catch (e) {}
+  },
+  async loadChat(id) {
+    if (this.kind === "db") { try { const s = await this.chats.doc(id).get(); return s.exists ? (s.data().turns || []) : []; } catch (e) { return []; } }
+    return this.readLocal("jy_chat_" + id, []);
+  },
+  async saveChat(id, turns) {
+    let t = turns.slice(-40);
+    while (JSON.stringify(t).length > 200000 && t.length > 2) t = t.slice(2);
+    if (this.kind === "db") { try { await this.chats.doc(id).set({ turns: t, savedAt: Date.now() }); } catch (e) {} return; }
+    this.writeLocal("jy_chat_" + id, t);
+  },
+};
+
+// ------------------------------------------------------------------ people list
+function personLabel(p) {
+  const pad = n => String(n).padStart(2, "0");
+  return `${p.d} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][p.mo - 1]} ${p.y}, ${pad(p.h)}:${pad(p.mi)} · ${(p.place || "").split(",")[0]}`;
+}
+function renderPeople() {
+  const box = $("#people");
+  if (!state.people.length) {
+    box.innerHTML = `<p class="note">Charts you make are saved here${Store.kind === "db" ? " (private to you)" : " in this browser"}, so you never re-type birth details.</p>`;
+    return;
+  }
+  box.innerHTML = "";
+  for (const p of state.people) {
+    const el = document.createElement("div");
+    el.className = "person" + (state.current && state.current.id === p.id ? " on" : "");
+    el.tabIndex = 0; el.setAttribute("role", "button");
+    el.innerHTML = `<div class="grow"><b>${esc(p.name || "Unnamed")}</b><br><span>${esc(personLabel(p))}</span></div>
+      <button class="link" data-del="${esc(p.id)}" aria-label="Delete ${esc(p.name)}">Delete</button>`;
+    el.onclick = e => { if (e.target.dataset.del) return; openPerson(p); };
+    el.onkeydown = e => { if (e.key === "Enter") openPerson(p); };
+    el.querySelector("[data-del]").onclick = () => askDelete(el, p);
+    box.appendChild(el);
+  }
+}
+function askDelete(el, p) {
+  const bar = document.createElement("div"); bar.className = "confirm";
+  bar.innerHTML = `<span>Delete ${esc(p.name)} and their chat?</span><button data-yes>Delete</button><button class="ghost" data-no>Keep</button>`;
+  el.replaceWith(bar);
+  bar.querySelector("[data-no]").onclick = renderPeople;
+  bar.querySelector("[data-yes]").onclick = async () => {
+    await Store.deletePerson(p.id); state.people = state.people.filter(x => x.id !== p.id);
+    if (state.current && state.current.id === p.id) openPerson(state.people[0] || EXAMPLE); else renderPeople();
+  };
+}
+
+// ------------------------------------------------------------------ form
+const CITY = (window.CITIES || []).map(c => ({ ...c, label: [c.n, c.a, c.c].filter(Boolean).join(", "), key: (c.n + " " + c.a + " " + c.c).toLowerCase() }));
+let listIdx = -1, listItems = [];
+function showCities(q) {
+  const ul = $("#placeList"); q = q.trim().toLowerCase();
+  if (q.length < 2) { ul.hidden = true; $("#f_place").setAttribute("aria-expanded", "false"); return; }
+  listItems = CITY.filter(c => c.key.startsWith(q) || c.n.toLowerCase().startsWith(q)).concat(CITY.filter(c => !c.n.toLowerCase().startsWith(q) && c.key.includes(q))).slice(0, 12);
+  ul.innerHTML = listItems.map((c, i) => `<li role="option" id="opt${i}" aria-selected="false" data-i="${i}">${esc(c.n)} <small>${esc([c.a, c.c].filter(Boolean).join(", "))}</small></li>`).join("")
+    || `<li aria-disabled="true"><small>Not in the list - open "Coordinates and time zone" and type them.</small></li>`;
+  ul.hidden = false; listIdx = -1; $("#f_place").setAttribute("aria-expanded", "true");
+}
+function pickCity(c) {
+  $("#f_place").value = c.label; $("#f_lat").value = c.lat; $("#f_lon").value = c.lon; $("#f_tz").value = c.tz;
+  $("#placeList").hidden = true; $("#f_place").setAttribute("aria-expanded", "false"); updateCoordSummary();
+}
+function updateCoordSummary() { const la = $("#f_lat").value, lo = $("#f_lon").value; $("#coordSummary").textContent = la && lo ? `(${la}, ${lo}, ${$("#f_tz").value})` : ""; }
+$("#f_place").addEventListener("input", e => showCities(e.target.value));
+$("#f_place").addEventListener("keydown", e => {
+  const ul = $("#placeList"); if (ul.hidden) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); listIdx = Math.max(0, Math.min(listItems.length - 1, listIdx + (e.key === "ArrowDown" ? 1 : -1)));
+    [...ul.children].forEach((li, i) => li.setAttribute("aria-selected", String(i === listIdx)));
+  } else if (e.key === "Enter" && listIdx >= 0) { e.preventDefault(); pickCity(listItems[listIdx]); }
+  else if (e.key === "Escape") ul.hidden = true;
+});
+$("#placeList").addEventListener("mousedown", e => { const li = e.target.closest("li[data-i]"); if (li) { e.preventDefault(); pickCity(listItems[+li.dataset.i]); } });
+$("#f_place").addEventListener("blur", () => setTimeout(() => { $("#placeList").hidden = true; }, 150));
+["#f_lat", "#f_lon", "#f_tz"].forEach(s => $(s).addEventListener("input", updateCoordSummary));
+
+function fillForm(p) {
+  const pad = n => String(n).padStart(2, "0");
+  $("#f_name").value = p.id === "example" ? "" : p.name || "";
+  $("#f_date").value = p.id === "example" ? "" : `${p.y}-${pad(p.mo)}-${pad(p.d)}`;
+  $("#f_time").value = p.id === "example" ? "" : `${pad(p.h)}:${pad(p.mi)}:${pad(p.s || 0)}`;
+  $("#f_gender").value = p.gender || ""; $("#f_place").value = p.id === "example" ? "" : p.place || "";
+  $("#f_lat").value = p.id === "example" ? "" : p.lat; $("#f_lon").value = p.id === "example" ? "" : p.lon; $("#f_tz").value = p.tz || "Asia/Kolkata";
+  $("#f_year").value = String((p.settings || {}).dasha_year || 365.25); $("#f_kar").value = String((p.settings || {}).chara_karaka_count || 7);
+  updateCoordSummary();
+}
+$("#newBtn").onclick = () => { fillForm({ ...EXAMPLE, id: "example" }); $("#formPanel").scrollIntoView({ block: "start" }); $("#f_name").focus({ preventScroll: true }); $("#formMsg").textContent = "Enter the new person's details."; };
+
+$("#form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const date = $("#f_date").value, time = $("#f_time").value, lat = parseFloat($("#f_lat").value), lon = parseFloat($("#f_lon").value);
+  if (!date || !time) { $("#formMsg").textContent = "Add the birth date and time."; return; }
+  if (isNaN(lat) || isNaN(lon)) { $("#formMsg").textContent = "Pick the birth place from the list, or enter latitude and longitude."; return; }
+  const [y, mo, d] = date.split("-").map(Number), [h, mi, s] = time.split(":").map(Number);
+  const tz = $("#f_tz").value.trim() || "Asia/Kolkata";
+  try { if (!/^[+-]?\d+(\.\d+)?$/.test(tz)) new Intl.DateTimeFormat("en", { timeZone: tz }); }
+  catch (err) { $("#formMsg").textContent = `"${tz}" isn't a time zone I know. Use a name like Asia/Kolkata or an offset like 5.5.`; return; }
+  const same = state.people.find(p => p.y === y && p.mo === mo && p.d === d && p.h === h && p.mi === mi && Math.abs(p.lat - lat) < 1e-4 && Math.abs(p.lon - lon) < 1e-4);
+  const p = { id: same ? same.id : "p" + Date.now().toString(36), name: $("#f_name").value.trim() || "Unnamed", y, mo, d, h, mi, s: s || 0, tz,
+    lat, lon, place: $("#f_place").value.trim(), gender: $("#f_gender").value,
+    settings: { dasha_year: parseFloat($("#f_year").value), chara_karaka_count: parseInt($("#f_kar").value, 10) } };
+  $("#goBtn").disabled = true; $("#formMsg").textContent = "Checking every factor…";
+  await new Promise(r => setTimeout(r, 30));
+  const ok = openPerson(p);
+  if (ok) {
+    const saved = await Store.savePerson(p);
+    state.people = [{ ...p, savedAt: Date.now() }, ...state.people.filter(x => x.id !== p.id)];
+    renderPeople();
+    $("#formMsg").textContent = saved ? "Saved." : "Made the kundali, but couldn't save it this time.";
+  }
+  $("#goBtn").disabled = false;
+});
+
+// ------------------------------------------------------------------ build + render
+function openPerson(p) {
+  try {
+    const birth = { name: p.name, y: p.y, mo: p.mo, d: p.d, h: p.h, mi: p.mi, s: p.s || 0, tz: isNaN(Number(p.tz)) ? p.tz : Number(p.tz),
+      lat: p.lat, lon: p.lon, place: p.place, gender: p.gender };
+    state.dossier = J.buildDossier(birth, p.settings || {});
+    state.chart = new J.Chart(birth, p.settings || {});
+    state.birth = birth; state.current = p;
+  } catch (err) {
+    console.error(err); $("#formMsg").textContent = "Couldn't calculate this chart: " + (err.message || err); return false;
+  }
+  if (p.id !== "example") fillForm(p);
+  renderPeople(); renderReport();
+  return true;
+}
+
+const POS = { 1: [200, 110], 2: [100, 45], 3: [45, 100], 4: [110, 200], 5: [45, 300], 6: [100, 355], 7: [200, 290], 8: [300, 355], 9: [355, 300], 10: [290, 200], 11: [355, 100], 12: [300, 45] };
+const NUMPOS = { 1: [200, 182], 2: [100, 22], 3: [20, 102], 4: [182, 204], 5: [20, 302], 6: [100, 386], 7: [200, 222], 8: [300, 386], 9: [380, 302], 10: [220, 204], 11: [380, 102], 12: [300, 22] };
+function northChart(signs, lagnaSign, retro = {}, label = "Kundali") {
+  const byHouse = {}; for (let h = 1; h <= 12; h++) byHouse[h] = [];
+  for (const [p, s] of Object.entries(signs)) byHouse[((SIGNS.indexOf(s) - lagnaSign + 12) % 12) + 1].push(AB[p] + (retro[p] ? "ᴿ" : ""));
+  let g = `<svg class="kundali" viewBox="0 0 400 400" role="img" aria-label="${esc(label)}"><rect class="frame" x="1" y="1" width="398" height="398"/>
+    <polygon class="lag" points="200,4 300,100 200,196 100,100"/>
+    <line x1="0" y1="0" x2="400" y2="400"/><line x1="400" y1="0" x2="0" y2="400"/><line x1="200" y1="0" x2="0" y2="200"/>
+    <line x1="0" y1="200" x2="200" y2="400"/><line x1="200" y1="400" x2="400" y2="200"/><line x1="400" y1="200" x2="200" y2="0"/>`;
+  for (let h = 1; h <= 12; h++) {
+    const [nx, ny] = NUMPOS[h]; g += `<text class="num" x="${nx}" y="${ny}" text-anchor="middle">${(lagnaSign + h - 1) % 12 + 1}</text>`;
+    const [x, y] = POS[h], items = byHouse[h];
+    items.forEach((t, i) => { g += `<text class="pl" x="${x}" y="${y + (i - (items.length - 1) / 2) * 16 + 5}" text-anchor="middle">${esc(t)}</text>`; });
+  }
+  return g + "</svg>";
+}
+const pill = (txt, cls) => `<span class="pill ${cls || ""}">${esc(txt)}</span>`;
+const verdictCls = v => /cancel|NOT|absent|very weak|vulnerable/.test(v) ? "bad" : /weak|reduced|obstructed|medium/.test(v) ? "warn" : "good";
+
+const TABS = [["kundali", "Kundali"], ["ask", "Ask"], ["life", "Life & dates"], ["dasha", "Dasha"], ["yogas", "Yogas & doshas"],
+  ["planets", "Planets"], ["strength", "Strength"], ["transits", "Transits"], ["remedies", "Remedies"], ["jaimini", "Jaimini"], ["time", "Birth time"]];
+function renderReport() {
+  const D = state.dossier, c = D.vimshottari.current, isEx = state.current.id === "example";
+  $("#reportHead").innerHTML = `<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+      <h2 style="margin:0">${esc(state.current.name || "Unnamed")}</h2>${isEx ? '<span class="example-flag">Example chart - add your own details</span>' : ""}</div>
+    <p class="note" style="margin:4px 0 0">${esc(personLabel(state.current))} · ${esc(D.input.timezone)}</p>
+    <div class="summary">
+      <div><b>Lagna</b>${esc(D.lagna.sign)} ${esc(D.lagna.degree)}<br><span class="note">${esc(D.lagna.nakshatra)} pada ${D.lagna.pada}</span></div>
+      <div><b>Moon sign (rashi)</b>${esc(D.moon.sign)}<br><span class="note">${esc(D.moon.nakshatra)} pada ${D.moon.pada}</span></div>
+      <div><b>Running dasha</b>${esc(c.mahadasha)} / ${esc(c.antardasha)} / ${esc(c.pratyantar)}<br><span class="note">antardasha ends ${esc(c.ad_ends)}</span></div>
+      <div><b>Saturn now</b>${esc(D.transits_now.sade_sati_or_dhaiya || "No Sade Sati or Dhaiya")}</div>
+    </div>`;
+  const tabs = $("#tabs"); tabs.innerHTML = "";
+  for (const [key, name] of TABS) {
+    const b = document.createElement("button"); b.textContent = name; b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(key === state.tab)); b.onclick = () => { state.tab = key; renderReport(); };
+    tabs.appendChild(b);
+  }
+  const panes = $("#panes");
+  panes.innerHTML = PANES[state.tab]();
+  if (state.tab === "kundali") wireVarga();
+  if (state.tab === "ask") wireChat();
+  if (state.tab === "time") wireRectify();
+}
+
+const PANES = {
+  kundali() {
+    const D = state.dossier, d1 = Object.fromEntries(D.planets.map(p => [p.planet, p.sign]));
+    const retro = Object.fromEntries(D.planets.map(p => [p.planet, p.retrograde && !["Rahu", "Ketu"].includes(p.planet)]));
+    const opts = Object.keys(D.vargas).filter(k => k !== "D1").map(k => `<option ${k === "D9" ? "selected" : ""}>${k}</option>`).join("");
+    const hl = D.houses.map(h => `<tr><td>${h.house}</td><td>${esc(h.sign)}</td><td>${esc(h.lord)} <span class="note">in ${h.lord_in_house}</span></td><td>${esc(h.occupants.join(", ") || "—")}</td><td class="note">${esc(J.BHAVA_MEANING[h.house])}</td></tr>`).join("");
+    return `<div class="charts"><figure>${northChart(d1, SIGNS.indexOf(D.lagna.sign), retro, "Rashi chart D1")}<figcaption>D1 Rashi · numbers are signs (1 = Aries)</figcaption></figure>
+      <figure><div id="vargaSvg"></div><figcaption><select id="vargaSel" aria-label="Divisional chart">${opts}</select><span id="vargaCap"></span></figcaption></figure></div>
+      <h3>Houses</h3><div class="scroll"><table><tr><th>House</th><th>Sign</th><th>Lord</th><th>Planets</th><th>Meaning</th></tr>${hl}</table></div>`;
+  },
+  planets() {
+    const D = state.dossier;
+    const rows = D.planets.map(p => `<tr><td><b>${p.planet}</b>${p.retrograde && !["Rahu", "Ketu"].includes(p.planet) ? " ᴿ" : ""}</td>
+      <td class="mono">${esc(p.sign)} ${esc(p.degree)}</td><td>${p.house}</td><td>${esc(p.nakshatra)} ${p.pada} <span class="note">(${esc(p.nakshatra_lord)})</span></td>
+      <td class="${["Exalted", "Own", "Moolatrikona"].includes(p.dignity) ? "good" : p.dignity === "Debilitated" ? "bad" : ""}">${esc(p.dignity)}</td>
+      <td>${esc(p.navamsa)}${p.vargottama ? " ✦" : ""}</td><td class="note">${esc(D.functional_nature.planets[p.planet].verdict)}</td><td class="note">${esc(p.baladi_avastha)}</td></tr>`).join("");
+    const cond = Object.entries(D.planet_condition).map(([p, c]) => `<details class="item"><summary><b>${p}</b> ${pill("net " + (c.net >= 0 ? "+" : "") + c.net, c.net > 0 ? "good" : c.net < 0 ? "bad" : "warn")}</summary>
+      <div class="body"><div class="good">${c.strengths.map(x => "+ " + esc(x)).join("<br>")}</div><div class="bad">${c.weaknesses.map(x => "− " + esc(x)).join("<br>") || "no weaknesses"}</div></div></details>`).join("");
+    const chip = (arr, f) => arr.length ? arr.map(f).join(" ") : "none";
+    return `<div class="scroll"><table><tr><th>Planet</th><th>Position</th><th>House</th><th>Nakshatra</th><th>Dignity</th><th>D9</th><th>Functional</th><th>Avastha</th></tr>${rows}</table></div>
+      <p><b>Combust:</b> ${chip(Object.entries(D.combustion), ([p, c]) => pill(`${p} ${c.distance_from_sun}°`, "bad"))}<br>
+      <b>Planetary war:</b> ${chip(D.planetary_war, w => pill(`${w.planets.join(" vs ")} → ${w.winner}`))}<br>
+      <b>Gandanta:</b> ${chip(D.gandanta, g => pill(g.point, "warn"))}<br>
+      <b>Bhava chalit shifts:</b> ${chip(D.bhava_chalit_shifts, s => pill(`${s.planet} ${s.whole_sign_house}→${s.chalit_house}`))}</p>
+      <h3>Every strength and weakness, per planet</h3>${cond}`;
+  },
+  yogas() {
+    const D = state.dossier;
+    const y = D.yogas.map(y => `<details class="item"><summary><b>${esc(y.name)}</b> ${pill(y.verdict, verdictCls(y.verdict))}</summary><div class="body">
+      <div>${y.conditions.map(esc).join("<br>")}</div>
+      ${y.cancellations.length ? `<div class="bad">Cancelled by: ${y.cancellations.map(esc).join("; ")}</div>` : ""}
+      ${y.weakenings.length ? `<div class="warn">Weakened by: ${y.weakenings.map(esc).join("; ")}</div>` : ""}
+      <div class="note">Result: ${esc(y.result)} · Source: ${esc(y.source)}</div></div></details>`).join("");
+    const d = D.doshas.map(x => `<details class="item" ${x.present ? "open" : ""}><summary><b>${esc(x.name)}</b> ${pill(x.status, x.present ? (x.cancellations.length ? "warn" : "bad") : "good")}${x.severity ? " " + pill("severity " + x.severity) : ""}</summary><div class="body">
+      ${x.present ? `${x.cancellations.length ? `<div class="warn">Cancellations: ${x.cancellations.map(esc).join("; ")}</div>` : ""}<div>Effect: ${esc(x.effect)}</div>` : ""}
+      <div class="note">${esc(x.classical_status)}</div></div></details>`).join("");
+    return `<h3 style="margin-top:0">Yogas, with every cancellation checked</h3>${y}<h3>Doshas, with their exceptions</h3>${d}`;
+  },
+  dasha() {
+    const D = state.dossier, v = D.vimshottari, now = D.generated_for_date;
+    const md = v.mahadashas.map(m => `<details class="item" ${m.start <= now && now < m.end ? "open" : ""}><summary><b>${m.lord}</b> <span class="mono">${m.start} → ${m.end}</span> <span class="note">age ${m.age_start}</span></summary>
+      <div class="scroll"><table>${m.antardashas.map(a => `<tr ${a.start <= now && now < a.end ? 'style="font-weight:600"' : ""}><td>${m.lord} / ${a.lord}</td><td class="mono">${a.start}</td><td class="mono">${a.end}</td></tr>`).join("")}</table></div></details>`).join("");
+    const hv = D.health_vigilance_periods.map(h => `<tr><td>${h.md} / ${h.ad}</td><td class="mono">${h.start} → ${h.end}</td><td class="note">${esc(h.why.join(", "))}</td></tr>`).join("");
+    return `<p>Birth dasha <b>${v.birth_dasha_lord}</b>, ${v.balance_at_birth_years} years left at birth · year = ${v.year_length_days} days</p>${md}
+      <h3>Health-vigilance periods</h3><p class="note">Dashas where both lords are marakas (2nd/7th) or 6/8/12 lords. Times to be careful with health, not predictions of death.</p>
+      <div class="scroll"><table>${hv}</table></div>`;
+  },
+  life() {
+    const D = state.dossier;
+    return Object.entries(D.life_areas).map(([k, a]) => {
+      const p = a.promise;
+      const w = a.timing.windows.map(x => `<tr class="${x.is_past ? "note" : ""}"><td class="mono">${x.start} → ${x.end}<br><span class="note">peak ${x.peak} · age ${x.age_at_start}${x.is_past ? " · past" : ""}</span></td>
+        <td>${x.md} / ${x.ad}</td><td>${pill(x.confidence.split(" ")[0], /high/.test(x.confidence) ? "good" : /medium/.test(x.confidence) ? "warn" : "")}</td><td class="note">${x.factors.map(esc).join("<br>")}</td></tr>`).join("");
+      return `<details class="item"><summary><b>${esc(p.area)}</b> ${pill(p.verdict, verdictCls(p.verdict))} <span class="note">score ${p.score}</span></summary><div class="body">
+        <div class="good">${p.favourable.map(x => "+ " + esc(x)).join("<br>")}</div><div class="bad">${p.unfavourable.map(x => "− " + esc(x)).join("<br>") || "nothing against"}</div>
+        <div class="scroll"><table><tr><th>Window</th><th>Dasha</th><th>Confidence</th><th>Why</th></tr>${w || '<tr><td colspan="4" class="note">No window in range.</td></tr>'}</table></div></div></details>`;
+    }).join("") + `<p class="note">Promise comes from the house, its lord, the karaka, the divisional chart and ashtakavarga. A date window is "high" only when the dasha and the Jupiter + Saturn double transit agree. Past windows are your test: if they match your real life, trust the future ones more.</p>`;
+  },
+  strength() {
+    const D = state.dossier;
+    const sb = Object.entries(D.shadbala.planets).map(([p, s]) => `<tr><td>${p}</td><td>${s.sthana}</td><td>${s.dig}</td><td>${s.kala}</td><td>${s.chesta}</td><td>${s.naisargika}</td><td>${s.drik}</td>
+      <td><b>${s.rupas}</b> / ${s.required_rupas}</td><td class="${s.ratio >= 1 ? "good" : "bad"}">${s.ratio}×</td></tr>`).join("");
+    const sav = D.ashtakavarga.sav_by_house.map(h => `<td class="${h.quality === "weak" ? "bad" : /strong|good/.test(h.quality) ? "good" : ""}">${h.bindus}</td>`).join("");
+    const bav = Object.entries(D.ashtakavarga.bav_by_sign).map(([p, r]) => `<tr><td>${p}</td>${Object.values(r).map(x => `<td>${x}</td>`).join("")}</tr>`).join("");
+    return `<h3 style="margin-top:0">Shadbala (six-fold strength)</h3><div class="scroll"><table><tr><th></th><th>Sthana</th><th>Dig</th><th>Kala</th><th>Chesta</th><th>Naisargika</th><th>Drik</th><th>Rupas / needed</th><th>Ratio</th></tr>${sb}</table></div>
+      <p class="note">${D.shadbala.approximations.map(esc).join(" ")}</p>
+      <h3>Sarvashtakavarga by house</h3><div class="scroll"><table><tr>${[...Array(12)].map((_, i) => `<th>H${i + 1}</th>`).join("")}</tr><tr>${sav}</tr></table></div>
+      <p class="note">28+ bindus = the house gives good results; under 25 = it struggles.</p>
+      <h3>Bhinnashtakavarga by sign</h3><div class="scroll"><table><tr><th></th>${SIGNS.map(s => `<th>${s.slice(0, 3)}</th>`).join("")}</tr>${bav}</table></div>`;
+  },
+  transits() {
+    const D = state.dossier, t = D.transits_now;
+    const rows = t.planets.map(p => `<tr><td>${p.planet}${p.retrograde && !["Rahu", "Ketu"].includes(p.planet) ? " ᴿ" : ""}</td><td class="mono">${esc(p.sign)} ${p.degree}°</td><td>${p.house_from_lagna}</td><td>${p.house_from_moon}</td>
+      <td class="${/^favourable(;|$)/.test(p.verdict) ? "good" : /obstructed/.test(p.verdict) ? "warn" : "bad"}">${esc(p.verdict)}</td></tr>`).join("");
+    const sc = D.saturn_cycles.map(s => `<tr><td>${esc(s.type)}</td><td class="mono">${s.start} → ${s.end}</td></tr>`).join("");
+    return `<p>Today (${t.date}): Saturn is ${t.saturn_from_moon} from your Moon · ${esc(t.sade_sati_or_dhaiya || "no Sade Sati or Dhaiya")} · Jupiter + Saturn both touch houses ${t.double_transit_houses_from_lagna.join(", ") || "none"}</p>
+      <div class="scroll"><table><tr><th>Planet</th><th>Now in</th><th>From lagna</th><th>From Moon</th><th>Gochar + vedha + ashtakavarga</th></tr>${rows}</table></div>
+      <h3>Saturn cycles over your life</h3><div class="scroll"><table>${sc}</table></div>`;
+  },
+  remedies() {
+    const D = state.dossier, g = D.remedies.gemstones, lk = D.remedies.lal_kitab;
+    const recs = g.recommendations.map(r => `<tr><td>${r.planet}</td><td>${esc(r.gem)}<br><span class="note">${esc(r.upratna)}</span></td>
+      <td>${pill(r.status.split(" (")[0], /^recommended/.test(r.status) ? "good" : /^avoid/.test(r.status) ? "bad" : "warn")}</td>
+      <td>${esc(r.finger)}${r.alt_finger ? `<br><span class="note">alt: ${esc(r.alt_finger)}</span>` : ""}</td><td class="note">${esc(r.metal)} · ${esc(r.day)} · ${esc(r.weight)}</td>
+      <td class="note">${r.reasons.map(esc).join("<br>")}${r.cautions.length ? `<br><span class="warn">${r.cautions.map(x => "⚠ " + esc(x)).join("<br>")}</span>` : ""}</td></tr>`).join("");
+    const md = D.remedies.mantra_daan.map(m => `<tr><td>${m.planet}</td><td class="note">${esc(m.why)}</td><td>${esc(m.beej_mantra)}<br><span class="note">${m.japa_count} japa · ${esc(m.worship)}</span></td><td class="note">${esc(m.daan)}</td></tr>`).join("");
+    const lkr = lk.planets.map(p => `<tr><td>${p.planet}</td><td>${p.lk_house}</td><td>${esc(p.state)}</td><td>${p.soya_sleeping === null ? "—" : p.soya_sleeping ? "sleeping" : "awake"}</td><td class="note">${esc(p.general_remedy)}</td></tr>`).join("");
+    return `<h3 style="margin-top:0">Gemstones</h3>${g.conflicts.length ? `<p class="bad">${g.conflicts.map(esc).join("<br>")}</p>` : ""}
+      <div class="scroll"><table><tr><th>Planet</th><th>Gem</th><th>Status</th><th>Finger</th><th>How</th><th>Why and cautions</th></tr>${recs}</table></div>
+      <ul class="plain note">${g.general_rules.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
+      <h3>Mantra and daan</h3><div class="scroll"><table>${md || '<tr><td class="note">No planet needs it.</td></tr>'}</table></div>
+      <h3>Lal Kitab</h3><div class="scroll"><table><tr><th>Planet</th><th>LK house</th><th>State</th><th>Soya</th><th>General remedy</th></tr>${lkr}</table></div>
+      <p><b>Rin (karmic debts):</b> ${lk.rin.length ? lk.rin.map(r => pill(`${r.rin} (${r.caused_by.join(", ")})`, "warn")).join(" ") : "none"}</p>
+      ${lk.rin.map(r => `<p class="note">${esc(r.rin)}: ${esc(r.remedy)}</p>`).join("")}
+      <ul class="plain note">${lk.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>`;
+  },
+  jaimini() {
+    const j = state.dossier.jaimini, l = j.longevity;
+    return `<h3 style="margin-top:0">Chara karakas (${esc(j.scheme)})</h3>${j.other_scheme_differs ? '<p class="warn">The 7- and 8-karaka schemes disagree for this chart; readings that rest on karakas are less certain.</p>' : ""}
+      <div class="scroll"><table>${j.chara_karakas.map(k => `<tr><td>${esc(k.karaka)}</td><td>${k.planet}</td><td class="mono">${k.degree_used}°</td></tr>`).join("")}</table></div>
+      <p>Karakamsha: <b>${esc(j.karakamsha.karakamsha_sign)}</b> (Atmakaraka ${j.karakamsha.atmakaraka})</p>
+      <h3>Arudha padas</h3><div class="scroll"><table><tr><th>Pada</th><th>Sign</th><th>House</th><th>Planets</th></tr>${Object.entries(j.arudha_padas).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.sign}</td><td>${v.house_from_lagna}</td><td>${esc(v.occupants.join(", "))}</td></tr>`).join("")}</table></div>
+      <h3>Longevity compartment (three pairs)</h3><div class="scroll"><table>${l.pairs.map(p => `<tr><td>${esc(p.pair)}</td><td>${esc(p.span)}</td></tr>`).join("")}</table></div>
+      <p>Result: <b>${esc(l.category)}</b> <span class="note">(${esc(l.rule_used)})</span>${l.modifiers.map(m => `<br><span class="note">${esc(m)}</span>`).join("")}
+      ${l.reality_check ? `<br><span class="warn">${esc(l.reality_check)}</span>` : ""}<br><span class="note">${esc(l.caution)}</span></p>`;
+  },
+  time() {
+    const D = state.dossier, b = D.birth_time_sensitivity;
+    const rows = Object.entries(b.points).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v.value)}</td><td class="mono">${v.stable_from_minutes} to +${v.stable_to_minutes} min</td>
+      <td>${pill(v.reliability.split(" - ")[0], /highly/.test(v.reliability) ? "bad" : /sensitive/.test(v.reliability) ? "warn" : "good")}</td></tr>`).join("");
+    const vr = Object.entries(D.variants_in_use).map(([k, v]) => `<details class="item"><summary>${esc(k.replace(/_/g, " "))}: <b>${esc(typeof v.choice === "object" ? "standard table" : v.choice)}</b></summary><div class="body note">${esc(v.note)}</div></details>`).join("");
+    return `<h3 style="margin-top:0">How much your birth time matters</h3><div class="scroll"><table><tr><th>Point</th><th>Value</th><th>Stays the same within</th><th>Reliability</th></tr>${rows}</table></div>
+      ${(b.boundary_planets || []).map(x => `<p class="warn">${esc(x)}</p>`).join("")}
+      <p class="note">${esc(b.limits)}</p>
+      <h3>Correct the birth time from real events</h3>
+      <p class="note">Add 2-4 past events with dates. The engine tries times around your birth time and ranks them by how well the dasha at each event fits.</p>
+      <div class="form" id="rectForm"></div>
+      <div id="rectOut"></div>
+      <h3>Where the classical texts disagree</h3>${vr}`;
+  },
+  ask() {
+    return `<div class="chat"><div class="log" id="log"></div>
+      <div class="chips" id="chips">${["Give me a full, honest life reading", "Meri shaadi kab hogi aur spouse kaisa hoga?", "Career: peaks and falls with dates",
+        "How is my mind and emotional stability?", "Which gemstone should I wear, and which to avoid?", "What do the next 5 years look like?"]
+        .map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+      <div class="composer"><textarea id="askIn" rows="2" placeholder="Ask in Hindi, English or Hinglish"></textarea>
+      <button id="askGo">Ask</button><button class="ghost" id="askStop" hidden>Stop</button></div>
+      <p class="note" id="askNote">Answers use your Claude plan. Each answer checks the full chart report first, so it can take up to a minute.</p></div>`;
+  },
+};
+function wireVarga() {
+  const sel = $("#vargaSel"); if (!sel) return;
+  const draw = () => { const v = state.dossier.vargas[sel.value], signs = {}; Object.keys(AB).forEach(p => signs[p] = v[p]);
+    $("#vargaSvg").innerHTML = northChart(signs, SIGNS.indexOf(v.Lagna), {}, v.meaning); $("#vargaCap").textContent = v.meaning; };
+  sel.onchange = draw; draw();
+}
+
+// ------------------------------------------------------------------ rectification UI
+function wireRectify() {
+  const box = $("#rectForm"), areas = Object.entries(J.AREAS).filter(([k]) => !["health", "litigation", "mind"].includes(k));
+  const row = i => `<div class="row2"><label>Event ${i + 1}<select id="ev_a${i}"><option value="">—</option>${areas.map(([k, a]) => `<option value="${k}">${esc(a.label)}</option>`).join("")}</select></label>
+    <label>Date<input id="ev_d${i}" type="date"></label></div>`;
+  box.innerHTML = [0, 1, 2, 3].map(row).join("") + `<button id="rectGo" class="ghost">Find the best-fitting birth time</button>`;
+  $("#rectGo").onclick = () => {
+    const events = [0, 1, 2, 3].map(i => ({ area: $("#ev_a" + i).value, date: $("#ev_d" + i).value })).filter(e => e.area && e.date);
+    if (!events.length) { $("#rectOut").innerHTML = '<p class="note">Add at least one event with a date.</p>'; return; }
+    const res = J.rectifyByEvents(state.birth, state.current.settings || {}, events, 60, 2);
+    $("#rectOut").innerHTML = `<div class="scroll"><table><tr><th>Time</th><th>Shift</th><th>Lagna / D9</th><th>Fit</th><th>Detail</th></tr>${res.map(r => `<tr><td class="mono">${r.time}</td><td>${r.offset_minutes > 0 ? "+" : ""}${r.offset_minutes} min</td><td>${r.lagna} / ${r.d9_lagna}</td><td><b>${r.score}</b></td><td class="note">${r.detail.map(esc).join("<br>")}</td></tr>`).join("")}</table></div>
+      <p class="note">Higher fit = the dashas at those times match your events better. If the top time differs from what you entered, edit the birth time and make the kundali again.</p>`;
+  };
+}
+
+// ------------------------------------------------------------------ chat (Claude via the sample capability)
+const RULES = `You are a Jyotish (Vedic astrology) analyst. You read one person's chart from a complete, pre-computed DOSSIER produced by a deterministic engine (planet positions matching Swiss Ephemeris; rules from BPHS, Brihat Jataka, Phaladeepika, Saravali, Jataka Parijata, Jaimini Sutras; Lal Kitab kept separate). The dossier is the only source of chart facts. Never compute or guess planetary positions, dashas or transits yourself - read them from the dossier or call a tool.
+
+HOW TO ANSWER EVERY QUESTION (always, in this order):
+1. Identify the life area, its houses, their lords, the karaka(s) and the divisional chart (D9 marriage, D10 career, D7 children, D2 wealth, D4 property, D12 parents, D24 education, D20 spiritual).
+2. Read ALL favourable and unfavourable factors for that area from the dossier: life_areas.<area>.promise, the planet_condition of the lord and karaka, functional_nature, shadbala, ashtakavarga, yogas (including their cancellations/weakenings) and doshas (including cancellations). Apply every exception the dossier lists (neecha bhanga, combustion, planetary war, retrogression, kendradhipati dosha, dusthana lordship, vargottama). Do not mention a yoga without its verdict (active / weakened / cancelled).
+3. Timing: use vimshottari (MD/AD/PD) and life_areas.<area>.timing.windows. An event needs dasha AND double transit to be called 'high'. Use the tools for exact pratyantar dates or dates outside the precomputed range.
+4. Conclude: a clear verdict, then dates as month-year windows with a confidence label (High / Medium / Low), then the 3-6 factors that decided it. End with a compact 'Factors checked' line listing what you examined, so the user can see nothing was skipped.
+
+CONSISTENCY RULES:
+- Weigh everything before you answer, so you never need to reverse yourself. If the factors conflict, say so up front and say which side wins and why (dignity and strength beat mere placement; varga confirmation beats a single D1 indication; a cancelled yoga does not count).
+- If the user pushes back, re-check the dossier. Change your answer ONLY if (a) they point to a dossier factor you failed to weigh, or (b) they give new information (corrected birth time, an actual past event). Otherwise keep your answer and explain which factors outweigh their point. Never agree just to please.
+- If a conclusion depends on a disputed point (variants_in_use) or on a time-sensitive chart point (birth_time_sensitivity, including boundary_planets), say so explicitly.
+
+HONESTY RULES (the user asked for brutal honesty):
+- State difficult results plainly: weak marriage promise, separation risk, career stagnation, debt, illness-prone periods, bad dashas. No softening. Use direct words.
+- Do not inflate good results either. If the promise is weak, say the event may not happen or may come late.
+- Health: name the vulnerable periods (health_vigilance_periods, 6/8/12 dashas, Sade Sati, Ashtama Shani) and body areas, and advise medical check-ups. Give the Jaimini longevity compartment if asked, with its reality_check. Do NOT give a date or year of death: the classical texts themselves call longevity the least reliable judgement (BPHS ch.44). Say this directly if asked, then give the vigilance windows instead.
+- Past windows: when a predicted window is in the past, ask whether the event happened - this is how the birth time gets verified. Suggest the "Birth time" tab or the rectify tool if past events do not match.
+- Cite sources only at chapter level as given in the dossier. Do not invent verse numbers or Sanskrit quotations.
+- Lal Kitab and Parashari often disagree; present Lal Kitab as a separate view and never merge them silently.
+
+DESCRIPTIONS: for "what will my spouse look like", "how many children / which order", "what career", "is my mind stable", use dossier.profiles together with D9/D7/D10. Give a concrete description (build, complexion, features, temperament, marks), say which indicators agree, and mark conflicting ones. Be specific - a vague answer is useless to this user - but never claim certainty the factors do not support.
+
+PRECISION OF DATES: give month-year windows; narrow to weeks only via get_pratyantars plus transits, and say that day-level dates are beyond what the method supports.
+
+REMEDIES: use remedies.gemstones (respect 'avoid' statuses, cautions and conflicts - finger and enemy-gem clashes), remedies.mantra_daan and remedies.lal_kitab. Never recommend a gem the dossier says to avoid.
+
+STYLE: Reply in the user's language (Hindi, English or Hinglish - match them). Be concise and structured with short headings and bullet points (markdown). Use Sanskrit terms with a short meaning in brackets the first time. The page already shows a general disclaimer, so do not add one.`;
+
+const TOOLS = () => {
+  const c = state.chart, birth = state.birth, settings = state.current.settings || {};
+  const v = () => J.vimshottari(c.lon.Moon, c.utc.getTime(), c.settings.dasha_year);
+  const day = s => { const t = Date.parse(String(s).slice(0, 10) + "T00:00:00Z"); if (isNaN(t)) throw new Error("date must be YYYY-MM-DD"); return t; };
+  const trim = o => { let s = JSON.stringify(o); return s.length > 30000 ? s.slice(0, 30000) + "…(trimmed)" : s; };
+  const areaEnum = Object.keys(J.AREAS);
+  return [
+    { name: "get_dasha_at", description: "Running Vimshottari mahadasha/antardasha/pratyantar (with start/end dates) on a date YYYY-MM-DD.",
+      inputSchema: { type: "object", properties: { date: { type: "string" } }, required: ["date"] },
+      execute: ({ date }) => { const r = J.runningDasha(v(), day(date)); if (!r) throw new Error("outside the dasha table"); const f = x => ({ lord: x.lord, start: J.fmtDate(x.start), end: J.fmtDate(x.end) }); return trim({ md: f(r.md), ad: f(r.ad), pd: f(r.pd) }); } },
+    { name: "get_pratyantars", description: "All pratyantardashas with dates inside one mahadasha/antardasha pair. occurrence_year is any year inside that antardasha.",
+      inputSchema: { type: "object", properties: { mahadasha: { type: "string" }, antardasha: { type: "string" }, occurrence_year: { type: "integer" } }, required: ["mahadasha", "antardasha", "occurrence_year"] },
+      execute: ({ mahadasha, antardasha, occurrence_year }) => {
+        for (const md of v().mahadashas) if (md.lord === String(mahadasha)) for (const ad of J.antardashas(md)) {
+          const y0 = new Date(ad.start).getUTCFullYear(), y1 = new Date(ad.end).getUTCFullYear();
+          if (ad.lord === String(antardasha) && y0 <= Number(occurrence_year) && Number(occurrence_year) <= y1)
+            return trim(J.pratyantars(md, ad).map(p => ({ pratyantar: p.lord, start: J.fmtDate(p.start), end: J.fmtDate(p.end) })));
+        }
+        throw new Error("no such mahadasha/antardasha around that year");
+      } },
+    { name: "get_transits", description: "Transit positions on a date YYYY-MM-DD judged from natal Moon with vedha, ashtakavarga, Sade Sati status and double-transit houses.",
+      inputSchema: { type: "object", properties: { date: { type: "string" } }, required: ["date"] },
+      execute: ({ date }) => trim(J.transitReport(c, day(date), J.ashtakavarga(c.sign, c.lagna))) },
+    { name: "find_event_windows", description: "Ranked time windows for a life area between two years (dasha significators + double transit + ashtakavarga). Areas: " + areaEnum.join(", "),
+      inputSchema: { type: "object", properties: { area: { type: "string", enum: areaEnum }, from_year: { type: "integer" }, to_year: { type: "integer" } }, required: ["area", "from_year", "to_year"] },
+      execute: ({ area, from_year, to_year }) => { if (!J.AREAS[area]) throw new Error("unknown area"); return trim(J.eventWindows(c, String(area), Date.UTC(Number(from_year), 0, 1), Date.UTC(Number(to_year), 11, 31), 10)); } },
+    { name: "rectify_birth_time", description: "Score candidate birth times (+/- window_minutes) against known past events [{area, date YYYY-MM-DD}]. Use when the user gives dated past events.",
+      inputSchema: { type: "object", properties: { events: { type: "array", items: { type: "object", properties: { area: { type: "string", enum: areaEnum }, date: { type: "string" } }, required: ["area", "date"] } }, window_minutes: { type: "integer" } }, required: ["events", "window_minutes"] },
+      execute: ({ events, window_minutes }) => trim(J.rectifyByEvents(birth, settings, (Array.isArray(events) ? events : []).map(e => ({ area: String(e.area), date: String(e.date) })), Math.max(5, Math.min(Number(window_minutes) || 60, 120)), 2)) },
+  ];
+};
+
+let sampleFn = null, toolsOk = false, askCtl = null;
+async function initSample() {
+  try { sampleFn = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch (e) { sampleFn = null; }
+  if (sampleFn) { try { toolsOk = !!(await sampleFn.limits()).tools; } catch (e) { toolsOk = false; } }
+  if (state.tab === "ask") renderReport();
+}
+function renderMd(md) {
+  if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(md));
+  return `<p style="white-space:pre-wrap">${esc(md)}</p>`;
+}
+async function wireChat() {
+  const log = $("#log"), id = state.current.id;
+  if (!sampleFn) {
+    $("#askNote").textContent = window.claude ? "Connecting to Claude…" : "Open this page inside Claude to ask questions. Every other tab works anywhere.";
+    $("#askGo").disabled = true;
+  }
+  if (!state.chats[id]) state.chats[id] = id === "example" ? [] : await Store.loadChat(id);
+  const turns = state.chats[id];
+  const paint = () => {
+    log.innerHTML = turns.length ? turns.map(t => t.role === "user" ? `<div class="bubble user">${esc(t.content)}</div>` : `<div class="bubble bot">${renderMd(t.content)}</div>`).join("")
+      : `<p class="note">Ask anything about ${esc(state.current.name || "this chart")}. The answer is built from the full report: every yoga with its cancellations, dashas, transits, divisional charts and strengths.</p>`;
+    log.scrollTop = log.scrollHeight;
+  };
+  paint();
+  const send = async text => {
+    text = text.trim(); if (!text || !sampleFn) return;
+    turns.push({ role: "user", content: text }); paint();
+    const bubble = document.createElement("div"); bubble.className = "bubble bot typing"; bubble.innerHTML = '<span class="note">Thinking - checking every factor…</span>';
+    log.appendChild(bubble); log.scrollTop = log.scrollHeight;
+    $("#askIn").value = ""; $("#askGo").disabled = true; $("#askStop").hidden = false;
+    askCtl = new AbortController();
+    const dossierText = JSON.stringify(state.dossier);
+    let history = turns.slice();
+    const budget = 230000 - RULES.length - dossierText.length;
+    while (JSON.stringify(history).length > budget && history.length > 1) history = history.slice(2);
+    if (history[0] && history[0].role !== "user") history = history.slice(1);
+    const input = [{ role: "user", content: RULES + "\n\nDOSSIER (JSON):\n" + dossierText }, ...history];
+    const opts = { modelTier: "complex", signal: askCtl.signal, onText: ({ text }) => { bubble.innerHTML = renderMd(text); log.scrollTop = log.scrollHeight; } };
+    if (toolsOk) opts.tools = TOOLS(); else opts.cache = false;
+    try {
+      const res = await sampleFn(input, opts);
+      bubble.classList.remove("typing");
+      turns.push({ role: "assistant", content: res.text + (res.truncated ? "\n\n*(Answer cut short - ask for one part at a time.)*" : "") });
+      if (id !== "example") Store.saveChat(id, turns);
+      paint();
+    } catch (e) {
+      bubble.classList.remove("typing");
+      const keep = e && e.text ? e.text : "";
+      const msg = { cancelled: "Stopped.", not_granted: "Claude access was not allowed for this page, so the Ask tab is off for this visit.",
+        sampling_disabled: "Claude isn't available on this account.", rate_limited: "You've hit your Claude usage limit for now. Try again later.",
+        session_expired: "Please sign in to Claude again.", refused: "Claude declined that question. Try asking it differently.",
+        prompt_too_large: "The conversation got too long. Start a new question.", tools_unavailable: "This view can't run the date tools." }[e && e.code]
+        || "Something went wrong reaching Claude. Try again.";
+      if (keep) { turns.push({ role: "assistant", content: keep + "\n\n*(interrupted)*" }); if (id !== "example") Store.saveChat(id, turns); }
+      else turns.pop();
+      paint();
+      $("#askNote").textContent = msg;
+      if (e && ["not_granted", "sampling_disabled", "not_declared", "capability_disabled"].includes(e.code)) sampleFn = null;
+    }
+    $("#askGo").disabled = !sampleFn; $("#askStop").hidden = true;
+  };
+  $("#askGo").onclick = () => send($("#askIn").value);
+  $("#askStop").onclick = () => askCtl && askCtl.abort();
+  $("#askIn").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send($("#askIn").value); } });
+  document.querySelectorAll("#chips [data-q]").forEach(b => b.onclick = () => send(b.dataset.q));
+}
+
+// ------------------------------------------------------------------ start
+(async function start() {
+  openPerson(EXAMPLE);
+  fillForm(EXAMPLE);
+  await Store.init();
+  state.people = await Store.listPeople();
+  renderPeople();
+  if (state.people.length) openPerson(state.people[0]);
+  initSample();
+})();
+</script>

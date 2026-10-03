@@ -71,3 +71,17 @@ Tests: `pip install -r requirements-dev.txt && python -m pytest -q`
   Kitab and not merge them with Parashari rules.
 * Astrology is a traditional interpretive system and has not been scientifically validated. Use it
   as a lens, not for medical, legal or financial decisions.
+
+## Browser version (Claude artifact)
+
+`artifact/` is a JavaScript port of the same engine that runs entirely in the browser, published as
+a Claude artifact. Nothing to install, and the chat runs on the viewer's own Claude plan (no API key).
+
+* `astro.js` uses Astronomy Engine positions, converted to the same Lahiri sidereal frame as Swiss
+  Ephemeris. They match the Python engine within ~15 arcseconds for planets and ~5 for the Moon.
+* `engine-core.js`, `engine-rules.js`, `engine-time.js` port the Python modules one to one. On random
+  charts the JS and Python reports agree on every sign, nakshatra, dasha, yoga, dosha and promise.
+  The exception is a planet sitting within a few arcseconds of a pada boundary; the report flags
+  those planets.
+* `cities.js` embeds coordinates for ~450 cities, because artifacts cannot call geocoding services.
+* `python build.py` writes `dist/` (JS escaped to ASCII) for publishing.
