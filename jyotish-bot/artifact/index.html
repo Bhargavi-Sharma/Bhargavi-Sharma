@@ -103,6 +103,13 @@ ul.plain { margin: 0; padding-left: 18px; }
 .chips button { background: var(--chip); color: var(--ink); font-weight: 500; font-size: .85rem; padding: 5px 10px; }
 .confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .88rem; }
 @media (prefers-reduced-motion: no-preference) { .bubble.bot.typing::after { content: "▍"; animation: blink 1s steps(2) infinite; color: var(--accent); } @keyframes blink { 50% { opacity: 0 } } }
+.simple { background: var(--accent-soft); border-radius: var(--r); padding: 14px 16px; margin-bottom: 16px; display: grid; gap: 8px; }
+.simple h3 { margin: 0; font: 400 1.15rem var(--display); }
+.simple p { margin: 0; }
+.tech { color: var(--muted); font-size: .8rem; display: block; }
+.meaning { display: grid; gap: 8px; }
+.meaning li { margin-bottom: 4px; }
+.tone-good { border-left: 3px solid var(--good); padding-left: 10px; } .tone-mixed { border-left: 3px solid var(--warn); padding-left: 10px; } .tone-hard { border-left: 3px solid var(--bad); padding-left: 10px; }
 footer { margin-top: 24px; font-size: .82rem; color: var(--muted); max-width: 70ch; }
 </style>
 
@@ -174,6 +181,7 @@ footer { margin-top: 24px; font-size: .82rem; color: var(--muted); max-width: 70
 <script src="engine-core.js"></script>
 <script src="engine-rules.js"></script>
 <script src="engine-time.js"></script>
+<script src="engine-explain.js"></script>
 <script src="cities.js"></script>
 <script>
 "use strict";
@@ -267,12 +275,13 @@ function askDelete(el, p) {
 }
 
 // ------------------------------------------------------------------ form
-const CITY = (window.CITIES || []).map(c => ({ ...c, label: [c.n, c.a, c.c].filter(Boolean).join(", "), key: (c.n + " " + c.a + " " + c.c).toLowerCase() }));
+const fold = t => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const CITY = (window.CITIES || []).map(c => ({ ...c, label: [c.n, c.a, c.c].filter(Boolean).join(", "), key: fold(c.n + " " + c.a + " " + c.c), nk: fold(c.n) }));
 let listIdx = -1, listItems = [];
 function showCities(q) {
-  const ul = $("#placeList"); q = q.trim().toLowerCase();
+  const ul = $("#placeList"); q = fold(q.trim());
   if (q.length < 2) { ul.hidden = true; $("#f_place").setAttribute("aria-expanded", "false"); return; }
-  listItems = CITY.filter(c => c.key.startsWith(q) || c.n.toLowerCase().startsWith(q)).concat(CITY.filter(c => !c.n.toLowerCase().startsWith(q) && c.key.includes(q))).slice(0, 12);
+  listItems = CITY.filter(c => c.nk.startsWith(q)).concat(CITY.filter(c => !c.nk.startsWith(q) && c.key.includes(q))).slice(0, 12);
   ul.innerHTML = listItems.map((c, i) => `<li role="option" id="opt${i}" aria-selected="false" data-i="${i}">${esc(c.n)} <small>${esc([c.a, c.c].filter(Boolean).join(", "))}</small></li>`).join("")
     || `<li aria-disabled="true"><small>Not in the list - open "Coordinates and time zone" and type them.</small></li>`;
   ul.hidden = false; listIdx = -1; $("#f_place").setAttribute("aria-expanded", "true");
@@ -337,7 +346,7 @@ function openPerson(p) {
   try {
     const birth = { name: p.name, y: p.y, mo: p.mo, d: p.d, h: p.h, mi: p.mi, s: p.s || 0, tz: isNaN(Number(p.tz)) ? p.tz : Number(p.tz),
       lat: p.lat, lon: p.lon, place: p.place, gender: p.gender };
-    state.dossier = J.buildDossier(birth, p.settings || {});
+    state.dossier = J.explain(J.buildDossier(birth, p.settings || {}));
     state.chart = new J.Chart(birth, p.settings || {});
     state.birth = birth; state.current = p;
   } catch (err) {
@@ -399,7 +408,16 @@ const PANES = {
     const retro = Object.fromEntries(D.planets.map(p => [p.planet, p.retrograde && !["Rahu", "Ketu"].includes(p.planet)]));
     const opts = Object.keys(D.vargas).filter(k => k !== "D1").map(k => `<option ${k === "D9" ? "selected" : ""}>${k}</option>`).join("");
     const hl = D.houses.map(h => `<tr><td>${h.house}</td><td>${esc(h.sign)}</td><td>${esc(h.lord)} <span class="note">in ${h.lord_in_house}</span></td><td>${esc(h.occupants.join(", ") || "—")}</td><td class="note">${esc(J.BHAVA_MEANING[h.house])}</td></tr>`).join("");
-    return `<div class="charts"><figure>${northChart(d1, SIGNS.indexOf(D.lagna.sign), retro, "Rashi chart D1")}<figcaption>D1 Rashi · numbers are signs (1 = Aries)</figcaption></figure>
+    const P = D.plain;
+    const simple = `<div class="simple"><h3>Your chart in simple words</h3>
+      <p><b>Right now:</b> ${esc(P.now || "")}</p>
+      <p><b>Saturn:</b> ${esc(P.saturn)}</p>
+      <p><b>Strongest areas of life:</b> ${esc(P.best.join(", "))}.</p>
+      <p><b>Weakest areas (need effort and care):</b> ${esc(P.worst.join(", "))}.</p>
+      <p><b>Health:</b> ${esc(P.health)}</p>
+      <p>${esc(P.yogas)} ${esc(P.doshas)}</p>
+      <p class="note">Open "Life & dates" for each area with dates, or "Ask" to talk it through.</p></div>`;
+    return simple + `<div class="charts"><figure>${northChart(d1, SIGNS.indexOf(D.lagna.sign), retro, "Rashi chart D1")}<figcaption>D1 Rashi · numbers are signs (1 = Aries)</figcaption></figure>
       <figure><div id="vargaSvg"></div><figcaption><select id="vargaSel" aria-label="Divisional chart">${opts}</select><span id="vargaCap"></span></figcaption></figure></div>
       <h3>Houses</h3><div class="scroll"><table><tr><th>House</th><th>Sign</th><th>Lord</th><th>Planets</th><th>Meaning</th></tr>${hl}</table></div>`;
   },
@@ -421,35 +439,42 @@ const PANES = {
   },
   yogas() {
     const D = state.dossier;
-    const y = D.yogas.map(y => `<details class="item"><summary><b>${esc(y.name)}</b> ${pill(y.verdict, verdictCls(y.verdict))}</summary><div class="body">
+    const y = D.yogas.map(y => `<details class="item"><summary><b>${esc(y.name)}</b> ${pill(y.verdict, verdictCls(y.verdict))}<span style="flex-basis:100%">${esc(y.plain || "")}</span></summary><div class="body">
       <div>${y.conditions.map(esc).join("<br>")}</div>
       ${y.cancellations.length ? `<div class="bad">Cancelled by: ${y.cancellations.map(esc).join("; ")}</div>` : ""}
       ${y.weakenings.length ? `<div class="warn">Weakened by: ${y.weakenings.map(esc).join("; ")}</div>` : ""}
       <div class="note">Result: ${esc(y.result)} · Source: ${esc(y.source)}</div></div></details>`).join("");
-    const d = D.doshas.map(x => `<details class="item" ${x.present ? "open" : ""}><summary><b>${esc(x.name)}</b> ${pill(x.status, x.present ? (x.cancellations.length ? "warn" : "bad") : "good")}${x.severity ? " " + pill("severity " + x.severity) : ""}</summary><div class="body">
+    const d = D.doshas.map(x => `<details class="item" ${x.present ? "open" : ""}><summary><b>${esc(x.name)}</b> ${pill(x.status, x.present ? (x.cancellations.length ? "warn" : "bad") : "good")}${x.severity ? " " + pill("severity " + x.severity) : ""}<span style="flex-basis:100%">${esc(x.plain || "")}</span></summary><div class="body">
       ${x.present ? `${x.cancellations.length ? `<div class="warn">Cancellations: ${x.cancellations.map(esc).join("; ")}</div>` : ""}<div>Effect: ${esc(x.effect)}</div>` : ""}
       <div class="note">${esc(x.classical_status)}</div></div></details>`).join("");
     return `<h3 style="margin-top:0">Yogas, with every cancellation checked</h3>${y}<h3>Doshas, with their exceptions</h3>${d}`;
   },
   dasha() {
     const D = state.dossier, v = D.vimshottari, now = D.generated_for_date;
-    const md = v.mahadashas.map(m => `<details class="item" ${m.start <= now && now < m.end ? "open" : ""}><summary><b>${m.lord}</b> <span class="mono">${m.start} → ${m.end}</span> <span class="note">age ${m.age_start}</span></summary>
-      <div class="scroll"><table>${m.antardashas.map(a => `<tr ${a.start <= now && now < a.end ? 'style="font-weight:600"' : ""}><td>${m.lord} / ${a.lord}</td><td class="mono">${a.start}</td><td class="mono">${a.end}</td></tr>`).join("")}</table></div></details>`).join("");
+    const md = v.mahadashas.map(m => `<details class="item" ${m.start <= now && now < m.end ? "open" : ""}><summary><b>${m.lord}</b> <span class="mono">${m.start} → ${m.end}</span> <span class="note">age ${m.age_start}</span> ${pill(m.plain.tone, m.plain.tone === "good" ? "good" : m.plain.tone === "hard" ? "bad" : "warn")}</summary>
+      <div class="body"><p class="tone-${m.plain.tone}" style="margin:0">${esc(m.plain.text)}</p>
+      <div class="scroll"><table><tr><th>Sub-period</th><th>Dates</th><th>What it brings</th></tr>${m.antardashas.map(a => `<tr ${a.start <= now && now < a.end ? 'style="font-weight:600"' : ""}><td>${m.lord} / ${a.lord}<br>${pill(a.plain.tone, a.plain.tone === "good" ? "good" : a.plain.tone === "hard" ? "bad" : "warn")}</td><td class="mono">${a.start}<br>${a.end}</td><td>${esc(a.plain.text)}</td></tr>`).join("")}</table></div></div></details>`).join("");
     const hv = D.health_vigilance_periods.map(h => `<tr><td>${h.md} / ${h.ad}</td><td class="mono">${h.start} → ${h.end}</td><td class="note">${esc(h.why.join(", "))}</td></tr>`).join("");
-    return `<p>Birth dasha <b>${v.birth_dasha_lord}</b>, ${v.balance_at_birth_years} years left at birth · year = ${v.year_length_days} days</p>${md}
+    return `<div class="simple"><h3>Right now</h3><p>${esc(D.plain.now || "")}</p></div><p class="note">A dasha is a planet's period. Each one brings its own themes into your life; the sub-period (antardasha) decides what comes up in those years.</p><p>Birth dasha <b>${v.birth_dasha_lord}</b>, ${v.balance_at_birth_years} years left at birth · year = ${v.year_length_days} days</p>${md}
       <h3>Health-vigilance periods</h3><p class="note">Dashas where both lords are marakas (2nd/7th) or 6/8/12 lords. Times to be careful with health, not predictions of death.</p>
       <div class="scroll"><table>${hv}</table></div>`;
   },
   life() {
     const D = state.dossier;
-    return Object.entries(D.life_areas).map(([k, a]) => {
+    return `<p class="note" style="margin-top:0">Each area shows: how strong it is in your chart, why (in simple words), and <b>when</b> things are likely to happen. Tap an area to open it.</p>` +
+    Object.entries(D.life_areas).map(([k, a]) => {
       const p = a.promise;
-      const w = a.timing.windows.map(x => `<tr class="${x.is_past ? "note" : ""}"><td class="mono">${x.start} → ${x.end}<br><span class="note">peak ${x.peak} · age ${x.age_at_start}${x.is_past ? " · past" : ""}</span></td>
-        <td>${x.md} / ${x.ad}</td><td>${pill(x.confidence.split(" ")[0], /high/.test(x.confidence) ? "good" : /medium/.test(x.confidence) ? "warn" : "")}</td><td class="note">${x.factors.map(esc).join("<br>")}</td></tr>`).join("");
-      return `<details class="item"><summary><b>${esc(p.area)}</b> ${pill(p.verdict, verdictCls(p.verdict))} <span class="note">score ${p.score}</span></summary><div class="body">
-        <div class="good">${p.favourable.map(x => "+ " + esc(x)).join("<br>")}</div><div class="bad">${p.unfavourable.map(x => "− " + esc(x)).join("<br>") || "nothing against"}</div>
-        <div class="scroll"><table><tr><th>Window</th><th>Dasha</th><th>Confidence</th><th>Why</th></tr>${w || '<tr><td colspan="4" class="note">No window in range.</td></tr>'}</table></div></div></details>`;
-    }).join("") + `<p class="note">Promise comes from the house, its lord, the karaka, the divisional chart and ashtakavarga. A date window is "high" only when the dasha and the Jupiter + Saturn double transit agree. Past windows are your test: if they match your real life, trust the future ones more.</p>`;
+      const signs = (arr, plainArr, cls, mark) => arr.map((t, i) => `<li class="${cls}">${mark} ${esc(plainArr[i])}<span class="tech">${esc(t)}</span></li>`).join("");
+      const w = a.timing.windows.map(x => `<tr class="${x.is_past ? "note" : ""}"><td class="mono">${x.start} → ${x.end}<br><span class="note">age ${x.age_at_start}${x.is_past ? " · past" : ""}</span></td>
+        <td>${esc(x.plain)}<details><summary class="note">Astrology reasons</summary><span class="tech">${x.md}/${x.ad} dasha · ${x.factors.map(esc).join("<br>")}</span></details></td>
+        <td>${pill(x.confidence.split(" ")[0], /high/.test(x.confidence) ? "good" : /medium/.test(x.confidence) ? "warn" : "")}</td></tr>`).join("");
+      const nx = a.timing.next;
+      return `<details class="item"><summary><b>${esc(p.area)}</b> ${pill(p.verdict, verdictCls(p.verdict))}${nx ? `<span class="note">next: ${nx.start} → ${nx.end} (${nx.confidence.split(" ")[0]})</span>` : ""}</summary><div class="body">
+        <p style="margin:0"><b>${esc(p.plain)}</b></p>
+        <ul class="plain meaning">${signs(p.favourable, p.favourable_plain, "good", "+")}${signs(p.unfavourable, p.unfavourable_plain, "bad", "−")}</ul>
+        <h3>When</h3>
+        <div class="scroll"><table><tr><th>When</th><th>What it means for you</th><th>How sure</th></tr>${w || '<tr><td colspan="3" class="note">No strong window in range.</td></tr>'}</table></div></div></details>`;
+    }).join("") + `<p class="note">"How sure" = high when your dasha and the slow planets Jupiter + Saturn both point to it; low when only the dasha does. Past windows are your test: if they match your real life, trust the future ones more.</p>`;
   },
   strength() {
     const D = state.dossier;
@@ -458,18 +483,20 @@ const PANES = {
     const sav = D.ashtakavarga.sav_by_house.map(h => `<td class="${h.quality === "weak" ? "bad" : /strong|good/.test(h.quality) ? "good" : ""}">${h.bindus}</td>`).join("");
     const bav = Object.entries(D.ashtakavarga.bav_by_sign).map(([p, r]) => `<tr><td>${p}</td>${Object.values(r).map(x => `<td>${x}</td>`).join("")}</tr>`).join("");
     return `<h3 style="margin-top:0">Shadbala (six-fold strength)</h3><div class="scroll"><table><tr><th></th><th>Sthana</th><th>Dig</th><th>Kala</th><th>Chesta</th><th>Naisargika</th><th>Drik</th><th>Rupas / needed</th><th>Ratio</th></tr>${sb}</table></div>
-      <p class="note">${D.shadbala.approximations.map(esc).join(" ")}</p>
+      <h3>What this means for you</h3><ul class="plain meaning">${Object.entries(D.shadbala.planets).map(([p, s]) => `<li class="${s.ratio >= 1 ? "good" : "bad"}">${esc(s.plain)}</li>`).join("")}</ul>
+      <p class="note">Ratio above 1× = the planet has enough strength to deliver its results. Below 1× = it struggles, so its areas need more effort. ${D.shadbala.approximations.map(esc).join(" ")}</p>
       <h3>Sarvashtakavarga by house</h3><div class="scroll"><table><tr>${[...Array(12)].map((_, i) => `<th>H${i + 1}</th>`).join("")}</tr><tr>${sav}</tr></table></div>
-      <p class="note">28+ bindus = the house gives good results; under 25 = it struggles.</p>
+      <p class="note">28+ points = that part of life comes easily; under 25 = it needs extra effort.</p>
+      <ul class="plain meaning">${D.ashtakavarga.sav_by_house.map(h => `<li class="${h.quality === "weak" ? "bad" : h.quality === "average" ? "" : "good"}">House ${h.house} - ${esc(h.plain)}</li>`).join("")}</ul>
       <h3>Bhinnashtakavarga by sign</h3><div class="scroll"><table><tr><th></th>${SIGNS.map(s => `<th>${s.slice(0, 3)}</th>`).join("")}</tr>${bav}</table></div>`;
   },
   transits() {
     const D = state.dossier, t = D.transits_now;
     const rows = t.planets.map(p => `<tr><td>${p.planet}${p.retrograde && !["Rahu", "Ketu"].includes(p.planet) ? " ᴿ" : ""}</td><td class="mono">${esc(p.sign)} ${p.degree}°</td><td>${p.house_from_lagna}</td><td>${p.house_from_moon}</td>
-      <td class="${/^favourable(;|$)/.test(p.verdict) ? "good" : /obstructed/.test(p.verdict) ? "warn" : "bad"}">${esc(p.verdict)}</td></tr>`).join("");
+      <td><span class="${/^favourable(;|$)/.test(p.verdict) ? "good" : /obstructed/.test(p.verdict) ? "warn" : "bad"}">${esc(p.plain)}</span><span class="tech">${esc(p.verdict)}</span></td></tr>`).join("");
     const sc = D.saturn_cycles.map(s => `<tr><td>${esc(s.type)}</td><td class="mono">${s.start} → ${s.end}</td></tr>`).join("");
-    return `<p>Today (${t.date}): Saturn is ${t.saturn_from_moon} from your Moon · ${esc(t.sade_sati_or_dhaiya || "no Sade Sati or Dhaiya")} · Jupiter + Saturn both touch houses ${t.double_transit_houses_from_lagna.join(", ") || "none"}</p>
-      <div class="scroll"><table><tr><th>Planet</th><th>Now in</th><th>From lagna</th><th>From Moon</th><th>Gochar + vedha + ashtakavarga</th></tr>${rows}</table></div>
+    return `<p class="note" style="margin-top:0">Transits are where the planets are today, counted from your Moon sign. Fast planets (Sun, Moon, Mercury, Venus, Mars) change your weeks; slow ones (Jupiter, Saturn, Rahu, Ketu) shape whole years.</p><p>Today (${t.date}): Saturn is ${t.saturn_from_moon} from your Moon · ${esc(t.sade_sati_or_dhaiya || "no Sade Sati or Dhaiya")} · Jupiter + Saturn both touch houses ${t.double_transit_houses_from_lagna.join(", ") || "none"}</p>
+      <div class="scroll"><table><tr><th>Planet</th><th>Now in</th><th>From lagna</th><th>From Moon</th><th>What it means for you now</th></tr>${rows}</table></div>
       <h3>Saturn cycles over your life</h3><div class="scroll"><table>${sc}</table></div>`;
   },
   remedies() {
@@ -572,6 +599,8 @@ DESCRIPTIONS: for "what will my spouse look like", "how many children / which or
 PRECISION OF DATES: give month-year windows; narrow to weeks only via get_pratyantars plus transits, and say that day-level dates are beyond what the method supports.
 
 REMEDIES: use remedies.gemstones (respect 'avoid' statuses, cautions and conflicts - finger and enemy-gem clashes), remedies.mantra_daan and remedies.lal_kitab. Never recommend a gem the dossier says to avoid.
+
+PLAIN LANGUAGE (most important for this user): write for a normal person, not an astrologer. After every astrological point, say in one plain sentence what it means in daily life (career, money, marriage, health, mind, family). Lead with the life meaning, then give the astrology reason briefly. The dossier has ready plain-language fields (plain, favourable_plain, unfavourable_plain, windows[].plain, mahadashas[].plain, shadbala.planets[].plain, transits_now.planets[].plain, plain.*) - use them.
 
 STYLE: Reply in the user's language (Hindi, English or Hinglish - match them). Be concise and structured with short headings and bullet points (markdown). Use Sanskrit terms with a short meaning in brackets the first time. The page already shows a general disclaimer, so do not add one.`;
 

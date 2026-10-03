@@ -247,9 +247,19 @@
     const winStart = birthMs + 365.25 * 16 * DAY, winEnd = nowMs + 365.25 * 30 * DAY, nowYm = fmtYm(nowMs);
     const ageAt = ym => { const [y, m] = ym.split("-").map(Number); return round(y + (m - 1) / 12 - (birth.y + (birth.mo - 1) / 12), 1); };
     const areas = {};
+    const MIN_AGE = { marriage: 18, children: 20, career: 18, govt_authority: 18, wealth: 18, property: 20, foreign: 17 };
     for (const area of Object.keys(AREAS)) {
-      const pr = promise(c, area, av, cond), ew = eventWindows(c, area, winStart, winEnd);
+      const st = Math.max(winStart, birthMs + 365.25 * (MIN_AGE[area] || 16) * DAY);
+      const pr = promise(c, area, av, cond), ew = eventWindows(c, area, st, winEnd);
+      // always include the best windows of the next 15 years, even if far-off windows score higher
+      const up = eventWindows(c, area, Math.max(nowMs, st), nowMs + 365.25 * 15 * DAY, 5);
+      const key = w => w.start + w.md + w.ad;
+      const have = new Set(ew.windows.map(key));
+      for (const w of up.windows) if (!have.has(key(w))) ew.windows.push(w);
+      ew.windows.sort((x, y) => (x.start < y.start ? -1 : 1));
       for (const w of ew.windows) { w.age_at_start = ageAt(w.start); w.is_past = w.end < nowYm; }
+      const future = ew.windows.filter(w => !w.is_past);
+      ew.next = future.find(w => !/^low/.test(w.confidence)) || future[0] || null;
       areas[area] = { promise: pr, timing: ew };
     }
     const vargas = {};
