@@ -345,13 +345,21 @@ $("#form").addEventListener("submit", async e => {
 });
 
 // ------------------------------------------------------------------ build + render
+const birthOf = p => ({ name: p.name, y: p.y, mo: p.mo, d: p.d, h: p.h, mi: p.mi, s: p.s || 0, tz: isNaN(Number(p.tz)) ? p.tz : Number(p.tz),
+  lat: p.lat, lon: p.lon, place: p.place, gender: p.gender });
+const builtCache = {};
+function built(p) {
+  const key = JSON.stringify([p.y, p.mo, p.d, p.h, p.mi, p.s, p.tz, p.lat, p.lon, p.gender, p.settings]) + p.id;
+  if (!builtCache[key]) {
+    const birth = birthOf(p), chart = new J.Chart(birth, p.settings || {});
+    builtCache[key] = { birth, chart, dossier: J.insight(J.explain(J.buildDossier(birth, p.settings || {})), chart) };
+  }
+  return builtCache[key];
+}
 function openPerson(p) {
   try {
-    const birth = { name: p.name, y: p.y, mo: p.mo, d: p.d, h: p.h, mi: p.mi, s: p.s || 0, tz: isNaN(Number(p.tz)) ? p.tz : Number(p.tz),
-      lat: p.lat, lon: p.lon, place: p.place, gender: p.gender };
-    state.chart = new J.Chart(birth, p.settings || {});
-    state.dossier = J.insight(J.explain(J.buildDossier(birth, p.settings || {})), state.chart);
-    state.birth = birth; state.current = p;
+    const b = built(p);
+    state.chart = b.chart; state.dossier = b.dossier; state.birth = b.birth; state.current = p;
   } catch (err) {
     console.error(err); $("#formMsg").textContent = "Couldn't calculate this chart: " + (err.message || err); return false;
   }
@@ -558,6 +566,7 @@ const PANES = {
     return `<details class="facts" ${f ? "" : "open"}><summary><b>Facts about ${esc(state.current.name || "this person")}</b> <span class="note">${f ? "saved - the chat reads these every time" : "add these so answers fit real life"}</span></summary>
       <textarea id="factsIn" rows="5" ${ex ? "disabled" : ""} placeholder="What do they do (study/job, where)? Relationship status? Family: siblings and children with birth years, parents' health. Important past events with month-year (job, moves, relationships, illnesses, injuries).">${esc(f)}</textarea>
       <div class="confirm"><button class="ghost" id="factsSave" ${ex ? "disabled" : ""}>Save facts</button><span class="note" id="factsMsg">${ex ? "Make your own kundali first." : ""}</span></div></details>
+    ${ex ? "" : refBox()}
     <div class="chat"><div class="log" id="log"></div>
       <div class="chips" id="chips">${["Give me a full, honest life reading", "Meri shaadi kab hogi aur spouse kaisa hoga?", "Career: peaks and falls with dates",
         "How is my mind and emotional stability?", "Which gemstone should I wear, and which to avoid?", "What do the next 5 years look like?"]
@@ -621,41 +630,90 @@ HONESTY AND EVIDENCE
 - Ask for verification evenly across areas (career, family, money, health, relationships), not just one or two. If the user hasn't answered a verification question, don't ask it again in the next answer.
 - Mention birth-time sensitivity at most once per conversation, unless the answer depends on it.
 
+REFERENCE CHARTS (family members)
+- REFERENCE CHART blocks and the get_reference_chart / add_reference_chart tools give other people's charts. Each has a cross_check block with the matching area in both charts.
+- Use them to confirm timing: an event that involves both people (a sibling's birth, a parent's illness, a marriage) should show in both charts in the same period. Agreement in both charts = stronger; showing in only one = weaker. Say which it is.
+- Use them for birth-time checks: if an event shows clearly in the reference chart but not in the main chart at the given time, the main birth time may be off (or the reference's may be). Each chart has its own birth-time sensitivity.
+- If the user gives a relative's birth details in chat, call add_reference_chart (ask for anything missing; never guess a birth time). Use the person field of the other tools to read their dashas and transits. Answer about the main person unless asked about the relative.
+
 CONSISTENCY
 - Weigh everything before answering so you don't need to reverse yourself. If factors conflict, say which side wins and why (strength and dignity beat placement; divisional-chart confirmation beats a single D1 sign; a cancelled yoga doesn't count).
 - Change an answer only when the user points to a factor you missed or gives a new fact. When you do, retract every conclusion that rested on the old one (including remedies and attributions) - don't leave dependent claims standing.
 
 STYLE: Reply in the user's language (Hindi, English or Hinglish - match them). Markdown with short headings or bullets. The page shows a general disclaimer, so don't add one.`;
 
+function findPerson(name) {
+  const n = fold(String(name || "").trim());
+  if (!n || ["me", "self", "main", "mine", "mera", "meri"].includes(n) || fold(state.current.name || "") === n) return state.current;
+  const all = state.people.filter(p => p.id !== state.current.id);
+  const hit = all.find(p => fold(p.name || "") === n) || all.find(p => fold(p.name || "").includes(n) || n.includes(fold(p.name || "")))
+    || all.find(p => (state.current.refs || []).some(r => r.id === p.id && fold(r.relation || "").includes(n)));
+  if (!hit) throw new Error(`No saved chart called "${name}". Saved: ${[state.current.name, ...all.map(p => p.name)].join(", ")}. Use add_reference_chart to make one.`);
+  return hit;
+}
+function findCity(q) {
+  const f = fold(String(q || "").split(",")[0].trim());
+  return CITY.find(c => c.nk === f) || CITY.find(c => c.nk.startsWith(f)) || null;
+}
+function refSummary(p, relation) {
+  const R = built(p).dossier;
+  return J.referenceSummary(R, relation, state.dossier, p.facts);
+}
 const TOOLS = () => {
-  const c = state.chart, birth = state.birth, settings = state.current.settings || {};
-  const v = () => J.vimshottari(c.lon.Moon, c.utc.getTime(), c.settings.dasha_year);
   const day = s => { const t = Date.parse(String(s).slice(0, 10) + "T00:00:00Z"); if (isNaN(t)) throw new Error("date must be YYYY-MM-DD"); return t; };
   const trim = o => { let s = JSON.stringify(o); return s.length > 30000 ? s.slice(0, 30000) + "…(trimmed)" : s; };
   const areaEnum = Object.keys(J.AREAS);
+  const who = person => { const p = findPerson(person); const b = built(p); return { p, c: b.chart, birth: b.birth, v: J.vimshottari(b.chart.lon.Moon, b.chart.utc.getTime(), b.chart.settings.dasha_year) }; };
+  const personProp = { type: "string", description: "Whose chart: leave empty for the main person, or a saved person's name (e.g. a reference chart)." };
   return [
-    { name: "get_dasha_at", description: "Running Vimshottari mahadasha/antardasha/pratyantar (with start/end dates) on a date YYYY-MM-DD.",
-      inputSchema: { type: "object", properties: { date: { type: "string" } }, required: ["date"] },
-      execute: ({ date }) => { const r = J.runningDasha(v(), day(date)); if (!r) throw new Error("outside the dasha table"); const f = x => ({ lord: x.lord, start: J.fmtDate(x.start), end: J.fmtDate(x.end) }); return trim({ md: f(r.md), ad: f(r.ad), pd: f(r.pd) }); } },
+    { name: "get_dasha_at", description: "Running Vimshottari mahadasha/antardasha/pratyantar (with dates) on a date YYYY-MM-DD, for the main person or a saved person.",
+      inputSchema: { type: "object", properties: { date: { type: "string" }, person: personProp }, required: ["date"] },
+      execute: ({ date, person }) => { const { v, p } = who(person); const r = J.runningDasha(v, day(date)); if (!r) throw new Error("outside the dasha table"); const f = x => ({ lord: x.lord, start: J.fmtDate(x.start), end: J.fmtDate(x.end) }); return trim({ person: p.name, md: f(r.md), ad: f(r.ad), pd: f(r.pd) }); } },
     { name: "get_pratyantars", description: "All pratyantardashas with dates inside one mahadasha/antardasha pair. occurrence_year is any year inside that antardasha.",
-      inputSchema: { type: "object", properties: { mahadasha: { type: "string" }, antardasha: { type: "string" }, occurrence_year: { type: "integer" } }, required: ["mahadasha", "antardasha", "occurrence_year"] },
-      execute: ({ mahadasha, antardasha, occurrence_year }) => {
-        for (const md of v().mahadashas) if (md.lord === String(mahadasha)) for (const ad of J.antardashas(md)) {
+      inputSchema: { type: "object", properties: { mahadasha: { type: "string" }, antardasha: { type: "string" }, occurrence_year: { type: "integer" }, person: personProp }, required: ["mahadasha", "antardasha", "occurrence_year"] },
+      execute: ({ mahadasha, antardasha, occurrence_year, person }) => {
+        const { v, p } = who(person);
+        for (const md of v.mahadashas) if (md.lord === String(mahadasha)) for (const ad of J.antardashas(md)) {
           const y0 = new Date(ad.start).getUTCFullYear(), y1 = new Date(ad.end).getUTCFullYear();
           if (ad.lord === String(antardasha) && y0 <= Number(occurrence_year) && Number(occurrence_year) <= y1)
-            return trim(J.pratyantars(md, ad).map(p => ({ pratyantar: p.lord, start: J.fmtDate(p.start), end: J.fmtDate(p.end) })));
+            return trim({ person: p.name, pratyantars: J.pratyantars(md, ad).map(x => ({ pratyantar: x.lord, start: J.fmtDate(x.start), end: J.fmtDate(x.end) })) });
         }
         throw new Error("no such mahadasha/antardasha around that year");
       } },
-    { name: "get_transits", description: "Transit positions on a date YYYY-MM-DD judged from natal Moon with vedha, ashtakavarga, Sade Sati status and double-transit houses.",
-      inputSchema: { type: "object", properties: { date: { type: "string" } }, required: ["date"] },
-      execute: ({ date }) => trim(J.transitReport(c, day(date), J.ashtakavarga(c.sign, c.lagna))) },
-    { name: "find_event_windows", description: "Ranked time windows for a life area between two years (dasha significators + double transit + ashtakavarga). Areas: " + areaEnum.join(", "),
-      inputSchema: { type: "object", properties: { area: { type: "string", enum: areaEnum }, from_year: { type: "integer" }, to_year: { type: "integer" } }, required: ["area", "from_year", "to_year"] },
-      execute: ({ area, from_year, to_year }) => { if (!J.AREAS[area]) throw new Error("unknown area"); return trim(J.eventWindows(c, String(area), Date.UTC(Number(from_year), 0, 1), Date.UTC(Number(to_year), 11, 31), 10)); } },
-    { name: "rectify_birth_time", description: "Score candidate birth times (+/- window_minutes) against known past events [{area, date YYYY-MM-DD}]. Use when the user gives dated past events.",
-      inputSchema: { type: "object", properties: { events: { type: "array", items: { type: "object", properties: { area: { type: "string", enum: areaEnum }, date: { type: "string" } }, required: ["area", "date"] } }, window_minutes: { type: "integer" } }, required: ["events", "window_minutes"] },
-      execute: ({ events, window_minutes }) => trim({ note: "Fit scores that differ by only a few points are noise: report 'not contradicted', not 'confirmed'. Events you placed in an area yourself may be mis-assigned.", results: J.rectifyByEvents(birth, settings, (Array.isArray(events) ? events : []).map(e => ({ area: String(e.area), date: String(e.date) })), Math.max(5, Math.min(Number(window_minutes) || 60, 120)), 2) }) },
+    { name: "get_transits", description: "Transits on a date YYYY-MM-DD judged from the person's natal Moon (vedha, ashtakavarga, Sade Sati, double-transit houses).",
+      inputSchema: { type: "object", properties: { date: { type: "string" }, person: personProp }, required: ["date"] },
+      execute: ({ date, person }) => { const { c } = who(person); return trim(J.transitReport(c, day(date), J.ashtakavarga(c.sign, c.lagna))); } },
+    { name: "find_event_windows", description: "Ranked time windows for a life area between two years (dasha + double transit + ashtakavarga). Areas: " + areaEnum.join(", "),
+      inputSchema: { type: "object", properties: { area: { type: "string", enum: areaEnum }, from_year: { type: "integer" }, to_year: { type: "integer" }, person: personProp }, required: ["area", "from_year", "to_year"] },
+      execute: ({ area, from_year, to_year, person }) => { if (!J.AREAS[area]) throw new Error("unknown area"); const { c } = who(person); return trim(J.eventWindows(c, String(area), Date.UTC(Number(from_year), 0, 1), Date.UTC(Number(to_year), 11, 31), 10)); } },
+    { name: "rectify_birth_time", description: "Score candidate birth times (+/- window_minutes) for the main person or a saved person against their known past events [{area, date YYYY-MM-DD}].",
+      inputSchema: { type: "object", properties: { events: { type: "array", items: { type: "object", properties: { area: { type: "string", enum: areaEnum }, date: { type: "string" } }, required: ["area", "date"] } }, window_minutes: { type: "integer" }, person: personProp }, required: ["events", "window_minutes"] },
+      execute: ({ events, window_minutes, person }) => { const { p, birth } = who(person); return trim({ person: p.name, note: "Fit scores that differ by only a few points are noise: report 'not contradicted', not 'confirmed'. Events you placed in an area yourself may be mis-assigned.", results: J.rectifyByEvents(birth, p.settings || {}, (Array.isArray(events) ? events : []).map(e => ({ area: String(e.area), date: String(e.date) })), Math.max(5, Math.min(Number(window_minutes) || 60, 120)), 2) }); } },
+    { name: "list_saved_charts", description: "Names, relations and birth details of all saved charts that can be used as references.",
+      execute: () => trim(state.people.map(p => ({ name: p.name, relation_to_main: ((state.current.refs || []).find(r => r.id === p.id) || {}).relation || "", born: personLabel(p), is_main: p.id === state.current.id }))) },
+    { name: "get_reference_chart", description: "Compact chart of a saved person (planets, dashas, life chapters, timeline, verdicts) plus, if relation is given, the matching life area in BOTH charts side by side for cross-checking timing.",
+      inputSchema: { type: "object", properties: { person: { type: "string" }, relation: { type: "string", description: "their relation to the main person, e.g. brother, mother, father, husband, son" } }, required: ["person"] },
+      execute: ({ person, relation }) => { const p = findPerson(person); if (p.id === state.current.id) throw new Error("that is the main chart"); return trim(refSummary(p, relation || ((state.current.refs || []).find(r => r.id === p.id) || {}).relation || "")); } },
+    { name: "add_reference_chart", description: "Make and save a chart for another person from birth details the user gave in chat, link it to the main person as a reference, and return its compact summary. Ask the user for any missing detail; never guess a birth time.",
+      inputSchema: { type: "object", properties: { name: { type: "string" }, relation: { type: "string" }, date: { type: "string", description: "YYYY-MM-DD" }, time: { type: "string", description: "HH:MM or HH:MM:SS, 24-hour" },
+        place: { type: "string", description: "city name" }, lat: { type: "number" }, lon: { type: "number" }, tz: { type: "string", description: "IANA zone or hours offset; default Asia/Kolkata" }, gender: { type: "string", enum: ["M", "F", ""] } },
+        required: ["name", "relation", "date", "time"] },
+      execute: async ({ name, relation, date, time, place, lat, lon, tz, gender }) => {
+        if (state.current.id === "example") throw new Error("Make and save the main person's kundali first.");
+        const [y, mo, d] = String(date).split("-").map(Number), [h, mi, sec] = String(time).split(":").map(Number);
+        if (!y || !mo || !d || isNaN(h) || isNaN(mi)) throw new Error("date must be YYYY-MM-DD and time HH:MM");
+        let la = Number(lat), lo = Number(lon), zone = tz || "Asia/Kolkata", pl = place || "";
+        if ((isNaN(la) || isNaN(lo) || lat == null || lon == null) && place) { const city = findCity(place); if (!city) throw new Error(`City "${place}" not in the built-in list - ask the user for latitude and longitude.`); la = city.lat; lo = city.lon; zone = tz || city.tz; pl = city.label; }
+        if (isNaN(la) || isNaN(lo)) throw new Error("need a birth place or latitude/longitude");
+        const np = { id: "p" + Date.now().toString(36), name: String(name), y, mo, d, h, mi, s: sec || 0, tz: zone, lat: la, lon: lo, place: pl, gender: gender || "", settings: {} };
+        built(np);
+        await Store.savePerson(np);
+        state.people = [{ ...np, savedAt: Date.now() }, ...state.people];
+        state.current.refs = [...(state.current.refs || []).filter(r => r.id !== np.id), { id: np.id, relation: String(relation) }];
+        await Store.savePerson(state.current);
+        renderPeople();
+        return trim({ saved: true, ...refSummary(np, relation) });
+      } },
   ];
 };
 
@@ -683,6 +741,14 @@ function paintChat() {
   if (stop) stop.hidden = !(live && live.busy);
 }
 /* The chat gets the full set of facts, minus repeated wording, so long chats stay under the size limit. */
+function refBox() {
+  const others = state.people.filter(p => p.id !== state.current.id), refs = state.current.refs || [];
+  const rows = others.map(p => { const r = refs.find(x => x.id === p.id); return `<div class="confirm"><label style="display:flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" data-ref="${esc(p.id)}" ${r && r.on !== false ? "checked" : ""} style="width:auto"> ${esc(p.name)}</label>
+    <input data-rel="${esc(p.id)}" value="${esc(r ? r.relation : "")}" placeholder="relation, e.g. brother" style="width:auto;flex:1;min-width:120px"></div>`; }).join("");
+  return `<details class="facts"><summary><b>Reference charts</b> <span class="note">${refs.filter(r => r.on !== false).length ? refs.filter(r => r.on !== false).length + " in use" : "use a family member's chart to cross-check timing"}</span></summary>
+    ${rows || '<p class="note">No other saved charts yet. Make one with "+ New person", or just tell the chat: "mere bhai ka chart bhi dekho - 12 Nov 2017, 10:20 am, Sonipat".</p>'}
+    ${rows ? '<div class="confirm"><button class="ghost" id="refSave">Save references</button><span class="note" id="refMsg"></span></div>' : ""}</details>`;
+}
 function compactForChat(D) {
   const C = JSON.parse(JSON.stringify(D));
   for (const a of Object.values(C.life_areas)) {
@@ -712,12 +778,15 @@ async function sendChat(text) {
   const enc = new TextEncoder();
   const bytes = x => enc.encode(typeof x === "string" ? x : JSON.stringify(x)).length;
   let history = turns.slice();
-  const budget = 250000 - bytes(RULES) - bytes(dossierText) - bytes(state.current.facts || "") - 3000;
+  const budget = 250000 - bytes(RULES) - bytes(dossierText) - bytes(state.current.facts || "") - 25000 * (state.current.refs || []).filter(r => r.on !== false).length - 3000;
   while (bytes(history) > budget && history.length > 1) history = history.slice(2);
   while (history.length && history[0].role !== "user") history = history.slice(1);
   const facts = (state.current.facts || "").trim();
   const head = RULES + `\n\nTODAY: ${new Date().toISOString().slice(0, 10)}\n\nKNOWN FACTS (from the user):\n${facts || "(none given yet - ask when a reading depends on them)"}\n\nDOSSIER (JSON):\n` + dossierText;
-  const input = [{ role: "user", content: head }, ...history];
+  const refs = (state.current.refs || []).map(r => ({ r, p: state.people.find(x => x.id === r.id) })).filter(x => x.p && x.r.on !== false);
+  let refText = "";
+  for (const { r, p } of refs) { try { refText += `\n\nREFERENCE CHART - ${p.name} (${r.relation}):\n` + JSON.stringify(refSummary(p, r.relation)); } catch (e) {} }
+  const input = [{ role: "user", content: head + refText }, ...history];
   const opts = { modelTier: "complex", signal: live.ctl.signal, onText: ({ text: t }) => { live.text = t; if (state.current.id === id) paintChat(); } };
   if (toolsOk) opts.tools = TOOLS(); else opts.cache = false;
   let msg = "";
@@ -754,6 +823,14 @@ async function wireChat() {
     const ok = await Store.savePerson(state.current);
     state.people = state.people.map(x => x.id === state.current.id ? { ...x, facts: state.current.facts } : x);
     $("#factsMsg").textContent = ok ? "Saved. New answers will use these facts." : "Couldn't save right now - try again.";
+  };
+  const rs = $("#refSave");
+  if (rs) rs.onclick = async () => {
+    const refs = [];
+    document.querySelectorAll("[data-ref]").forEach(cb => { const rel = document.querySelector(`[data-rel="${cb.dataset.ref}"]`).value.trim(); if (cb.checked || rel) refs.push({ id: cb.dataset.ref, relation: rel || "relative", on: cb.checked }); });
+    state.current.refs = refs;
+    const ok = await Store.savePerson(state.current);
+    $("#refMsg").textContent = ok ? `Saved. ${refs.filter(r => r.on).length} reference chart(s) go with every question.` : "Couldn't save right now.";
   };
   const clr = $("#askClear");
   if (clr) clr.onclick = () => { if (chatLive[id] && chatLive[id].busy) return; state.chats[id] = []; if (id !== "example") Store.saveChat(id, []); paintChat(); };

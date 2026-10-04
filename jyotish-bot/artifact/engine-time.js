@@ -248,9 +248,9 @@
     const winStart = birthMs + 365.25 * 16 * DAY, winEnd = nowMs + 365.25 * 30 * DAY, nowYm = fmtYm(nowMs);
     const ageAt = ym => { const [y, m] = ym.split("-").map(Number); return round(y + (m - 1) / 12 - (birth.y + (birth.mo - 1) / 12), 1); };
     const areas = {};
-    const MIN_AGE = { love: 15, marriage: 18, children: 20, career: 18, govt_authority: 18, wealth: 18, property: 20, foreign: 17 };
+    const MIN_AGE = { father: 0, mother: 0, siblings: 0, health: 0, accidents_surgery: 0, mind: 0, love: 15, marriage: 18, children: 20, career: 18, govt_authority: 18, wealth: 18, property: 20, foreign: 17 };
     for (const area of Object.keys(AREAS)) {
-      const st = Math.max(winStart, birthMs + 365.25 * (MIN_AGE[area] || 16) * DAY);
+      const st = birthMs + 365.25 * (MIN_AGE[area] ?? 16) * DAY;
       const pr = promise(c, area, av, cond), ew = eventWindows(c, area, st, winEnd);
       // always include the best windows of the next 15 years, even if far-off windows score higher
       const up = eventWindows(c, area, Math.max(nowMs, st), nowMs + 365.25 * 15 * DAY, 5);

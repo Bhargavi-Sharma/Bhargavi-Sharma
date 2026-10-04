@@ -125,6 +125,39 @@
     return D;
   }
 
-  Object.assign(J, { insight, BODY_PLANET, BODY_SIGN });
+  /* Relation of the reference person TO the main person -> which life area to compare in each chart. */
+  function relationAreas(relation, mainGender) {
+    const r = String(relation || "").toLowerCase();
+    const is = (...w) => w.some(x => r.includes(x));
+    if (is("brother", "sister", "sibling", "bhai", "behen", "bahen", "didi", "bhaiya")) return { main: "siblings", ref: "siblings" };
+    if (is("mother", "maa", "mummy", "mom", "mata")) return { main: "mother", ref: "children" };
+    if (is("father", "papa", "dad", "pita")) return { main: "father", ref: "children" };
+    if (is("son", "daughter", "child", "beta", "beti", "bachcha")) return { main: "children", ref: mainGender === "M" ? "father" : "mother" };
+    if (is("husband", "wife", "spouse", "partner", "pati", "patni", "fiance", "boyfriend", "girlfriend")) return { main: "marriage", ref: "marriage" };
+    return null;
+  }
+  const compactWindows = ws => ws.map(w => ({ from: w.start, to: w.end, dasha: `${w.md}/${w.ad}`, confidence: w.confidence.split(" ")[0], past: w.is_past }));
+
+  /* A compact view of another person's chart, sized for the chat (~15-25 KB). */
+  function referenceSummary(R, relation, mainD, facts) {
+    const rel = relationAreas(relation, (mainD.input || {}).gender);
+    const out = {
+      name: R.input.name, relation, born: `${R.input.local_time} ${R.input.place || ""} (${R.input.timezone})`, facts: facts || "",
+      lagna: `${R.lagna.sign} ${R.lagna.degree}`, moon: `${R.moon.sign}, ${R.moon.nakshatra} pada ${R.moon.pada}`,
+      planets: R.planets.map(p => `${p.planet}: ${p.sign} ${p.degree}, house ${p.house}, ${p.nakshatra}-${p.pada}, ${p.dignity}${p.retrograde && !["Rahu", "Ketu"].includes(p.planet) ? ", retro" : ""}`),
+      current_dasha: R.vimshottari.current, life_chapters: R.life_chapters.map(c => ({ mahadasha: c.mahadasha, from: c.from, to: c.to, tone: c.tone, switches_on: c.switches_on })),
+      timeline: R.timeline.map(t => ({ from: t.from, to: t.to, dasha: t.dasha, areas: t.areas_switched_on })),
+      upcoming_5y: R.upcoming_5y, area_verdicts: Object.fromEntries(Object.entries(R.life_areas).map(([k, a]) => [k, a.promise.verdict])),
+      birth_time_sensitivity: Object.fromEntries(Object.entries(R.birth_time_sensitivity.points).map(([k, v]) => [k, `${v.value}: ${v.reliability}`])),
+    };
+    if (rel) out.cross_check = {
+      note: "Compare these two lists: an event involving both people should show in both charts at the same time.",
+      in_main_chart: { area: rel.main, promise: mainD.life_areas[rel.main].promise.verdict, windows: compactWindows(mainD.life_areas[rel.main].timing.windows) },
+      in_this_chart: { area: rel.ref, promise: R.life_areas[rel.ref].promise.verdict, windows: compactWindows(R.life_areas[rel.ref].timing.windows) },
+    };
+    return out;
+  }
+
+  Object.assign(J, { insight, BODY_PLANET, BODY_SIGN, referenceSummary, relationAreas });
   if (typeof module !== "undefined") module.exports = J;
 })(typeof window !== "undefined" ? window : globalThis);
