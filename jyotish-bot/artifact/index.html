@@ -118,31 +118,32 @@ footer { margin-top: 24px; font-size: .82rem; color: var(--muted); max-width: 70
 <div class="wrap">
   <header class="top">
     <h1>Jyotish <span>Bot</span></h1>
-    <p>Parashari + Jaimini + Lal Kitab · every rule checked with its exceptions</p>
+    <p data-i18n="tagline">Parashari + Jaimini + Lal Kitab · every rule checked with its exceptions</p>
+    <label style="margin-left:auto;display:flex;gap:6px;align-items:center"><span data-i18n="language">Language</span> <select id="langSel" style="width:auto"><option value="en">English</option><option value="hi">Hinglish</option><option value="hd">हिंदी</option></select></label>
   </header>
 
   <div class="app">
       <section class="panel" id="peoplePanel" aria-labelledby="peopleH">
-        <h2 id="peopleH">Saved kundalis</h2>
+        <h2 id="peopleH" data-i18n="saved">Saved kundalis</h2>
         <div class="people" id="people"><p class="note">Charts you generate are saved here so you never re-type birth details.</p></div>
-        <button class="ghost" id="newBtn" style="margin-top:10px;width:100%">+ New person</button>
+        <button class="ghost" id="newBtn" style="margin-top:10px;width:100%" data-i18n="newp">+ New person</button>
       </section>
 
       <section class="panel" id="formPanel" aria-labelledby="formH">
-        <h2 id="formH">Birth details</h2>
+        <h2 id="formH" data-i18n="birth">Birth details</h2>
         <form class="form" id="form" autocomplete="off">
-          <label>Name <input id="f_name" placeholder="e.g. Bhargavi"></label>
+          <label><span data-i18n="name">Name</span> <input id="f_name" placeholder="e.g. Bhargavi"></label>
           <div class="row2">
-            <label>Date <input id="f_date" type="date" required></label>
-            <label>Time <input id="f_time" type="time" step="1" required></label>
+            <label><span data-i18n="date">Date</span> <input id="f_date" type="date" required></label>
+            <label><span data-i18n="time">Time</span> <input id="f_time" type="time" step="1" required></label>
           </div>
-          <label>Gender <select id="f_gender"><option value="">Not set</option><option value="F">Female</option><option value="M">Male</option></select></label>
+          <label><span data-i18n="gender">Gender</span> <select id="f_gender"><option value="" data-i18n="notset">Not set</option><option value="F" data-i18n="female">Female</option><option value="M" data-i18n="male">Male</option></select></label>
           <div class="combo">
-            <label>Birth place <input id="f_place" placeholder="Start typing a city" role="combobox" aria-expanded="false" aria-controls="placeList"></label>
+            <label><span data-i18n="place">Birth place</span> <input id="f_place" data-i18n-ph="placeph" placeholder="Start typing a city" role="combobox" aria-expanded="false" aria-controls="placeList"></label>
             <ul id="placeList" role="listbox" hidden></ul>
           </div>
           <details>
-            <summary class="note">Coordinates and time zone <span id="coordSummary"></span></summary>
+            <summary class="note"><span data-i18n="coords">Coordinates and time zone</span> <span id="coordSummary"></span></summary>
             <div class="form" style="margin-top:8px">
               <div class="row2">
                 <label>Latitude <input id="f_lat" type="number" step="0.0001" required></label>
@@ -153,14 +154,14 @@ footer { margin-top: 24px; font-size: .82rem; color: var(--muted); max-width: 70
             </div>
           </details>
           <details>
-            <summary class="note">Calculation settings</summary>
+            <summary class="note" data-i18n="calc">Calculation settings</summary>
             <div class="form" style="margin-top:8px">
               <label>Dasha year length <select id="f_year"><option value="365.25">365.25 days (common)</option><option value="365.2422">365.2422 days (solar)</option><option value="360">360 days (savana)</option></select></label>
               <label>Chara karakas <select id="f_kar"><option value="7">7 (Jaimini Sutras)</option><option value="8">8 (BPHS, with Rahu)</option></select></label>
               <p class="note">Lahiri ayanamsa and mean nodes are used, as in most Indian almanacs.</p>
             </div>
           </details>
-          <button type="submit" id="goBtn">Make kundali</button>
+          <button type="submit" id="goBtn" data-i18n="make">Make kundali</button>
           <div class="msg-line note" id="formMsg" role="status"></div>
         </form>
       </section>
@@ -172,8 +173,7 @@ footer { margin-top: 24px; font-size: .82rem; color: var(--muted); max-width: 70
     </section>
   </div>
 
-  <footer>Astrology is a traditional interpretive system, not a validated science. The engine applies the classical rules mechanically;
-    the Ask tab adds AI interpretation. Don't make medical, legal or money decisions on it alone.</footer>
+  <footer data-i18n="footer">Astrology is a traditional interpretive system, not a validated science.</footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
@@ -183,6 +183,7 @@ footer { margin-top: 24px; font-size: .82rem; color: var(--muted); max-width: 70
 <script src="engine-core.js"></script>
 <script src="engine-rules.js"></script>
 <script src="engine-time.js"></script>
+<script src="lang.js"></script>
 <script src="engine-explain.js"></script>
 <script src="engine-insight.js"></script>
 <script src="cities.js"></script>
@@ -190,6 +191,18 @@ footer { margin-top: 24px; font-size: .82rem; color: var(--muted); max-width: 70
 "use strict";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const UI = {"tagline": {"en": "Parashari + Jaimini + Lal Kitab · every rule checked with its exceptions", "hi": "Parashari + Jaimini + Lal Kitab · har niyam apne apvaad ke saath check", "hd": "पाराशरी + जैमिनी + लाल किताब · हर नियम अपवाद सहित जाँचा गया"}, "saved": {"en": "Saved kundalis", "hi": "Saved kundaliyan", "hd": "सहेजी गई कुंडलियाँ"}, "newp": {"en": "+ New person", "hi": "+ Naya vyakti", "hd": "+ नया व्यक्ति"}, "birth": {"en": "Birth details", "hi": "Janm ki jaankari", "hd": "जन्म विवरण"}, "name": {"en": "Name", "hi": "Naam", "hd": "नाम"}, "date": {"en": "Date", "hi": "Taareekh", "hd": "तारीख"}, "time": {"en": "Time", "hi": "Samay", "hd": "समय"}, "gender": {"en": "Gender", "hi": "Ling", "hd": "लिंग"}, "notset": {"en": "Not set", "hi": "Nahi chuna", "hd": "नहीं चुना"}, "female": {"en": "Female", "hi": "Mahila", "hd": "महिला"}, "male": {"en": "Male", "hi": "Purush", "hd": "पुरुष"}, "place": {"en": "Birth place", "hi": "Janm sthaan", "hd": "जन्म स्थान"}, "placeph": {"en": "Start typing a city", "hi": "Shehar ka naam likhein", "hd": "शहर का नाम लिखें"}, "coords": {"en": "Coordinates and time zone", "hi": "Akshansh-deshantar aur time zone", "hd": "अक्षांश-देशांतर और समय क्षेत्र"}, "calc": {"en": "Calculation settings", "hi": "Ganana settings", "hd": "गणना सेटिंग"}, "make": {"en": "Make kundali", "hi": "Kundali banayein", "hd": "कुंडली बनाएँ"}, "language": {"en": "Language", "hi": "Bhasha", "hd": "भाषा"}, "footer": {"en": "Astrology is a traditional interpretive system, not a validated science. The engine applies the classical rules mechanically; the Ask tab adds AI interpretation. Don't make medical, legal or money decisions on it alone.", "hi": "Jyotish ek paramparik vyakhya paddhati hai, pramanit vigyan nahi. Engine shastriya niyam yantrik roop se lagata hai; Ask tab AI vyakhya jodta hai. Sirf iske bharose medical, kanooni ya paise ke faisle na lein.", "hd": "ज्योतिष एक पारंपरिक व्याख्या पद्धति है, प्रमाणित विज्ञान नहीं। इंजन शास्त्रीय नियम यांत्रिक रूप से लगाता है; Ask टैब AI व्याख्या जोड़ता है। केवल इसके भरोसे चिकित्सा, कानूनी या धन संबंधी निर्णय न लें।"}, "t_kundali": {"en": "Kundali", "hi": "Kundali", "hd": "कुंडली"}, "t_ask": {"en": "Ask", "hi": "Poochhein", "hd": "पूछें"}, "t_life": {"en": "Life & dates", "hi": "Jeevan aur taareekhein", "hd": "जीवन व तारीखें"}, "t_dasha": {"en": "Dasha", "hi": "Dasha", "hd": "दशा"}, "t_yogas": {"en": "Yogas & doshas", "hi": "Yog aur dosh", "hd": "योग व दोष"}, "t_planets": {"en": "Planets", "hi": "Grah", "hd": "ग्रह"}, "t_strength": {"en": "Strength", "hi": "Bal", "hd": "बल"}, "t_transits": {"en": "Transits", "hi": "Gochar", "hd": "गोचर"}, "t_remedies": {"en": "Remedies", "hi": "Upay", "hd": "उपाय"}, "t_jaimini": {"en": "Jaimini", "hi": "Jaimini", "hd": "जैमिनी"}, "t_time": {"en": "Birth time", "hi": "Janm samay", "hd": "जन्म समय"}, "example": {"en": "Example chart - add your own details", "hi": "Udaharan kundali - apni jaankari daalein", "hd": "उदाहरण कुंडली - अपना विवरण डालें"}, "lagna": {"en": "Lagna", "hi": "Lagna", "hd": "लग्न"}, "moonsign": {"en": "Moon sign (rashi)", "hi": "Chandra rashi", "hd": "चंद्र राशि"}, "running": {"en": "Running dasha", "hi": "Chalti dasha", "hd": "चल रही दशा"}, "adends": {"en": "antardasha ends", "hi": "antardasha khatam", "hd": "अंतर्दशा समाप्त"}, "satnow": {"en": "Saturn now", "hi": "Shani abhi", "hd": "शनि अभी"}, "simple": {"en": "Your chart in simple words", "hi": "Aapki kundali aasaan shabdon mein", "hd": "आपकी कुंडली सरल शब्दों में"}, "rightnow": {"en": "Right now", "hi": "Abhi", "hd": "अभी"}, "saturn": {"en": "Saturn", "hi": "Shani", "hd": "शनि"}, "best": {"en": "Strongest areas of life", "hi": "Zindagi ke sabse majboot area", "hd": "जीवन के सबसे बलवान क्षेत्र"}, "worst": {"en": "Weakest areas (need effort and care)", "hi": "Sabse kamzor area (mehnat aur dhyan chahiye)", "hd": "सबसे कमज़ोर क्षेत्र (मेहनत व ध्यान चाहिए)"}, "health": {"en": "Health", "hi": "Sehat", "hd": "स्वास्थ्य"}, "openlife": {"en": "Open \"Life & dates\" for each area with dates, or \"Ask\" to talk it through.", "hi": "Har area ki taareekhon ke liye \"Jeevan aur taareekhein\" kholein, ya \"Poochhein\" mein baat karein.", "hd": "हर क्षेत्र की तारीखों के लिए \"जीवन व तारीखें\" खोलें, या \"पूछें\" में बात करें।"}, "houses": {"en": "Houses", "hi": "Bhaav (ghar)", "hd": "भाव"}, "lifeintro": {"en": "Each area shows how strong it is in your chart, why (in simple words), and <b>when</b> things are likely to happen. Tap an area to open it.", "hi": "Har area mein dikhta hai ki kundali mein woh kitna majboot hai, kyun (aasaan shabdon mein), aur <b>kab</b> kya hone ki sambhavna hai. Kholne ke liye area par tap karein.", "hd": "हर क्षेत्र में दिखता है कि कुंडली में वह कितना बलवान है, क्यों (सरल शब्दों में), और <b>कब</b> क्या होने की संभावना है। खोलने के लिए क्षेत्र पर टैप करें।"}, "next": {"en": "next", "hi": "agla", "hd": "अगला"}, "when": {"en": "When", "hi": "Kab", "hd": "कब"}, "whatmeans": {"en": "What it means for you", "hi": "Aapke liye matlab", "hd": "आपके लिए मतलब"}, "howsure": {"en": "How sure", "hi": "Kitna pakka", "hd": "कितना पक्का"}, "reasons": {"en": "Astrology reasons", "hi": "Jyotish ke kaaran", "hd": "ज्योतिषीय कारण"}, "age": {"en": "age", "hi": "umar", "hd": "उम्र"}, "past": {"en": "past", "hi": "beet chuka", "hd": "बीत चुका"}, "nowindow": {"en": "No strong window in range.", "hi": "Is daur mein koi pakka samay nahi.", "hd": "इस अवधि में कोई पक्का समय नहीं।"}, "lifefoot": {"en": "\"How sure\" is high when your dasha and the slow planets Jupiter + Saturn both point to it, low when only the dasha does. Past windows are your test: if they match your real life, trust the future ones more.", "hi": "\"Kitna pakka\" tab high hai jab dasha aur Guru + Shani dono ishara karein; low jab sirf dasha. Beete hue samay aapki pareeksha hain: agar asli zindagi se milein, to aage wale par zyaada bharosa karein.", "hd": "\"कितना पक्का\" तब ऊँचा है जब दशा और गुरु + शनि दोनों इशारा करें; कम जब केवल दशा। बीते समय आपकी परीक्षा हैं: अगर असली जीवन से मिलें, तो आगे वालों पर ज़्यादा भरोसा करें।"}, "chapters": {"en": "Chapters of your life", "hi": "Aapki zindagi ke adhyaay", "hd": "आपके जीवन के अध्याय"}, "chaptersnote": {"en": "Each mahadasha is a chapter. These are the parts of life each chapter switches on.", "hi": "Har mahadasha ek adhyaay hai. Yeh dikhata hai ki har adhyaay zindagi ke kaun se hisse jagaata hai.", "hd": "हर महादशा एक अध्याय है। यह दिखाता है कि हर अध्याय जीवन के कौन से हिस्से जगाता है।"}, "chapter": {"en": "Chapter", "hi": "Adhyaay", "hd": "अध्याय"}, "focus": {"en": "Brings into focus", "hi": "Kis par focus", "hd": "किस पर ध्यान"}, "next5": {"en": "Next 5 years, all areas together", "hi": "Agle 5 saal, saare area ek saath", "hd": "अगले 5 साल, सभी क्षेत्र एक साथ"}, "area": {"en": "Area", "hi": "Area", "hd": "क्षेत्र"}, "nothing": {"en": "Nothing medium or high.", "hi": "Kuch medium ya high nahi.", "hd": "कुछ मध्यम या ऊँचा नहीं।"}, "allperiods": {"en": "All periods", "hi": "Saare daur", "hd": "सभी दशाएँ"}, "dashanote": {"en": "A dasha is a planet's period. Each one brings its own themes into your life; the sub-period (antardasha) decides what comes up in those years.", "hi": "Dasha ek grah ka daur hai. Har dasha apne vishay laati hai; antardasha tay karti hai ki un saalon mein kya saamne aayega.", "hd": "दशा एक ग्रह का दौर है। हर दशा अपने विषय लाती है; अंतर्दशा तय करती है कि उन वर्षों में क्या सामने आएगा।"}, "subperiod": {"en": "Sub-period", "hi": "Antardasha", "hd": "अंतर्दशा"}, "dates": {"en": "Dates", "hi": "Taareekhein", "hd": "तारीखें"}, "brings": {"en": "What it brings", "hi": "Kya laata hai", "hd": "क्या लाता है"}, "healthv": {"en": "Health-vigilance periods", "hi": "Sehat ke liye saavdhaani ke daur", "hd": "स्वास्थ्य सावधानी के दौर"}, "healthvnote": {"en": "Dashas where both lords are marakas (2nd/7th) or 6/8/12 lords. Times to be careful with health, not predictions of death.", "hi": "Aisi dashayein jahan dono swami maarak (2/7) ya 6/8/12 ke swami hain. Sehat ka dhyan rakhne ke samay - maut ki bhavishyavani nahi.", "hd": "ऐसी दशाएँ जहाँ दोनों स्वामी मारक (2/7) या 6/8/12 के स्वामी हैं। सेहत का ध्यान रखने का समय - मृत्यु की भविष्यवाणी नहीं।"}, "yogash": {"en": "Yogas, with every cancellation checked", "hi": "Yog, har bhang ki jaanch ke saath", "hd": "योग, हर भंग की जाँच सहित"}, "doshash": {"en": "Doshas, with their exceptions", "hi": "Dosh, apvaadon ke saath", "hd": "दोष, अपवादों सहित"}, "planetmap": {"en": "What each planet runs in your life", "hi": "Har grah aapki zindagi mein kya chalata hai", "hd": "हर ग्रह आपके जीवन में क्या चलाता है"}, "planetmapnote": {"en": "One planet runs several areas, so they move together in its periods.", "hi": "Ek grah kai area chalata hai, isliye uske daur mein woh saath-saath chalte hain.", "hd": "एक ग्रह कई क्षेत्र चलाता है, इसलिए उसके दौर में वे साथ-साथ चलते हैं।"}, "planet": {"en": "Planet", "hi": "Grah", "hd": "ग्रह"}, "runs": {"en": "Runs these areas", "hi": "Yeh area chalata hai", "hd": "ये क्षेत्र चलाता है"}, "body": {"en": "Body", "hi": "Sharir", "hd": "शरीर"}, "itsmd": {"en": "Its mahadasha", "hi": "Iski mahadasha", "hd": "इसकी महादशा"}, "everyplanet": {"en": "Every strength and weakness, per planet", "hi": "Har grah ki har taakat aur kamzori", "hd": "हर ग्रह की हर ताकत और कमज़ोरी"}, "whatthis": {"en": "What this means for you", "hi": "Aapke liye iska matlab", "hd": "आपके लिए इसका मतलब"}, "ratiohelp": {"en": "Ratio above 1× = the planet has enough strength to deliver its results. Below 1× = it struggles, so its areas need more effort.", "hi": "1× se upar = grah mein nateeja dene ki poori taakat. 1× se neeche = sangharsh, iske area mein zyaada mehnat.", "hd": "1× से ऊपर = ग्रह में परिणाम देने की पूरी ताकत। 1× से नीचे = संघर्ष, इसके क्षेत्रों में ज़्यादा मेहनत।"}, "savhelp": {"en": "28+ points = that part of life comes easily; under 25 = it needs extra effort.", "hi": "28+ point = zindagi ka woh hissa aasaani se; 25 se kam = zyaada mehnat.", "hd": "28+ अंक = जीवन का वह हिस्सा आसानी से; 25 से कम = ज़्यादा मेहनत।"}, "house": {"en": "House", "hi": "Bhaav", "hd": "भाव"}, "trintro": {"en": "Transits are where the planets are today, counted from your Moon sign. Fast planets (Sun, Moon, Mercury, Venus, Mars) change your weeks; slow ones (Jupiter, Saturn, Rahu, Ketu) shape whole years.", "hi": "Gochar yaani aaj grah kahan hain, aapki Chandra rashi se gine hue. Tez grah (Surya, Chandra, Budh, Shukra, Mangal) hafte badalte hain; dheeme grah (Guru, Shani, Rahu, Ketu) poore saal.", "hd": "गोचर यानी आज ग्रह कहाँ हैं, आपकी चंद्र राशि से गिने हुए। तेज़ ग्रह (सूर्य, चंद्र, बुध, शुक्र, मंगल) हफ़्ते बदलते हैं; धीमे ग्रह (गुरु, शनि, राहु, केतु) पूरे साल।"}, "nowin": {"en": "Now in", "hi": "Abhi kahan", "hd": "अभी कहाँ"}, "fromlagna": {"en": "From lagna", "hi": "Lagna se", "hd": "लग्न से"}, "frommoon": {"en": "From Moon", "hi": "Chandra se", "hd": "चंद्र से"}, "meansnow": {"en": "What it means for you now", "hi": "Abhi aapke liye matlab", "hd": "अभी आपके लिए मतलब"}, "slow": {"en": "Slow planets, 10 years back to 10 years ahead", "hi": "Dheeme grah, 10 saal peeche se 10 saal aage tak", "hd": "धीमे ग्रह, 10 साल पीछे से 10 साल आगे तक"}, "slownote": {"en": "Where Saturn, Jupiter, Rahu and Ketu stay, the house they hit, and the body region they press on.", "hi": "Shani, Guru, Rahu aur Ketu kahan rehte hain, kis ghar ko chhoote hain, aur sharir ke kis hisse par dabaav.", "hd": "शनि, गुरु, राहु और केतु कहाँ रहते हैं, किस भाव को छूते हैं, और शरीर के किस हिस्से पर दबाव।"}, "sign": {"en": "Sign", "hi": "Rashi", "hd": "राशि"}, "bodyreg": {"en": "Body region", "hi": "Sharir ka hissa", "hd": "शरीर का हिस्सा"}, "satcycles": {"en": "Saturn cycles over your life", "hi": "Zindagi bhar ke Shani chakra", "hd": "जीवन भर के शनि चक्र"}, "gems": {"en": "Gemstones", "hi": "Ratna", "hd": "रत्न"}, "mantra": {"en": "Mantra and daan", "hi": "Mantra aur daan", "hd": "मंत्र और दान"}, "lalkitab": {"en": "Lal Kitab", "hi": "Lal Kitab", "hd": "लाल किताब"}, "btmatters": {"en": "How much your birth time matters", "hi": "Aapka janm samay kitna maayne rakhta hai", "hd": "आपका जन्म समय कितना मायने रखता है"}, "rectify": {"en": "Correct the birth time from real events", "hi": "Asli ghatnaon se janm samay sudhaarein", "hd": "असली घटनाओं से जन्म समय सुधारें"}, "disagree": {"en": "Where the classical texts disagree", "hi": "Jahan granth ek-mat nahi", "hd": "जहाँ ग्रंथ एकमत नहीं"}, "facts": {"en": "Facts about", "hi": "Jaankari:", "hd": "जानकारी:"}, "factssaved": {"en": "saved - the chat reads these every time", "hi": "saved - chat har baar padhta hai", "hd": "सहेजी गई - चैट हर बार पढ़ता है"}, "factsadd": {"en": "add these so answers fit real life", "hi": "yeh daalein taaki jawab asli zindagi se milein", "hd": "यह डालें ताकि जवाब असली जीवन से मिलें"}, "factsph": {"en": "What do they do (study/job, where)? Relationship status? Family: siblings and children with birth years, parents' health. Important past events with month-year (job, moves, relationships, illnesses, injuries).", "hi": "Kya karte hain (padhai/naukri, kahan)? Relationship status? Parivaar: bhai-behen aur bachche janm varsh ke saath, maa-papa ki sehat. Purani zaroori ghatnayein mahina-saal ke saath (naukri, shift, rishte, bimari, chot).", "hd": "क्या करते हैं (पढ़ाई/नौकरी, कहाँ)? रिश्ते की स्थिति? परिवार: भाई-बहन और बच्चे जन्म वर्ष सहित, माता-पिता की सेहत। पुरानी ज़रूरी घटनाएँ महीना-साल सहित (नौकरी, स्थान बदलना, रिश्ते, बीमारी, चोट)।"}, "savefacts": {"en": "Save facts", "hi": "Jaankari save karein", "hd": "जानकारी सहेजें"}, "makefirst": {"en": "Make your own kundali first.", "hi": "Pehle apni kundali banayein.", "hd": "पहले अपनी कुंडली बनाएँ।"}, "askph": {"en": "Ask in Hindi, English or Hinglish", "hi": "Hindi, English ya Hinglish mein poochhein", "hd": "हिंदी, अंग्रेज़ी या हिंग्लिश में पूछें"}, "askbtn": {"en": "Ask", "hi": "Poochho", "hd": "पूछें"}, "stop": {"en": "Stop", "hi": "Roko", "hd": "रोकें"}, "asknote": {"en": "Answers use your Claude plan. Each answer checks the full chart report first, so it can take up to a minute.", "hi": "Jawab aapke Claude plan se aate hain. Har jawab poori report check karta hai, isliye ek minute tak lag sakta hai.", "hd": "जवाब आपके Claude प्लान से आते हैं। हर जवाब पूरी रिपोर्ट जाँचता है, इसलिए एक मिनट तक लग सकता है।"}, "clear": {"en": "Clear this chat", "hi": "Yeh chat saaf karein", "hd": "यह चैट साफ़ करें"}, "refs": {"en": "Reference charts", "hi": "Reference kundaliyan", "hd": "संदर्भ कुंडलियाँ"}, "inuse": {"en": "in use", "hi": "chalu", "hd": "उपयोग में"}, "refshint": {"en": "use a family member's chart to cross-check timing", "hi": "parivaar ke kisi ki kundali se timing cross-check karein", "hd": "परिवार के किसी सदस्य की कुंडली से समय की जाँच करें"}, "saverefs": {"en": "Save references", "hi": "References save karein", "hd": "संदर्भ सहेजें"}};
+const CHIPS = {"en": ["Give me a full, honest life reading", "Meri shaadi kab hogi aur spouse kaisa hoga?", "Career: peaks and falls with dates", "How is my mind and emotional stability?", "Which gemstone should I wear, and which to avoid?", "What do the next 5 years look like?"], "hi": ["Meri poori, imaandaar life reading do", "Meri shaadi kab hogi aur jeevansathi kaisa hoga?", "Career ke utaar-chadhaav taareekhon ke saath", "Mera mann aur bhavnatmak sthirta kaisi hai?", "Kaunsa ratna pehnoon, kaunsa nahi?", "Agle 5 saal kaise rahenge?"], "hd": ["मेरी पूरी, ईमानदार जीवन रीडिंग दो", "मेरी शादी कब होगी और जीवनसाथी कैसा होगा?", "करियर के उतार-चढ़ाव तारीखों सहित", "मेरा मन और भावनात्मक स्थिरता कैसी है?", "कौन सा रत्न पहनूँ, कौन सा नहीं?", "अगले 5 साल कैसे रहेंगे?"]};
+let LANGSEL = (() => { try { return localStorage.getItem("jy_lang") || "en"; } catch (e) { return "en"; } })();
+const u = k => (UI[k] && (UI[k][LANGSEL] || UI[k].en)) || k;
+const LL = () => J.LANG[LANGSEL] || J.LANG.en;
+const LP = p => LL().planet(p);
+const AREA_EN_KEY = Object.fromEntries(Object.entries(J.LANG.en.AREA).map(([k, v]) => [v, k]));
+function applyStaticI18n() {
+  document.documentElement.lang = LANGSEL === "en" ? "en" : "hi";
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = u(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = u(el.dataset.i18nPh); });
+}
 const SIGNS = J.SIGNS;
 const AB = { Sun: "Su", Moon: "Mo", Mars: "Ma", Mercury: "Me", Jupiter: "Ju", Venus: "Ve", Saturn: "Sa", Rahu: "Ra", Ketu: "Ke" };
 const EXAMPLE = { id: "example", name: "Example person", y: 1990, mo: 5, d: 15, h: 10, mi: 30, s: 0, tz: "Asia/Kolkata",
@@ -349,10 +362,10 @@ const birthOf = p => ({ name: p.name, y: p.y, mo: p.mo, d: p.d, h: p.h, mi: p.mi
   lat: p.lat, lon: p.lon, place: p.place, gender: p.gender });
 const builtCache = {};
 function built(p) {
-  const key = JSON.stringify([p.y, p.mo, p.d, p.h, p.mi, p.s, p.tz, p.lat, p.lon, p.gender, p.settings]) + p.id;
+  const key = JSON.stringify([p.y, p.mo, p.d, p.h, p.mi, p.s, p.tz, p.lat, p.lon, p.gender, p.settings]) + p.id + LANGSEL;
   if (!builtCache[key]) {
     const birth = birthOf(p), chart = new J.Chart(birth, p.settings || {});
-    builtCache[key] = { birth, chart, dossier: J.insight(J.explain(J.buildDossier(birth, p.settings || {})), chart) };
+    builtCache[key] = { birth, chart, dossier: J.insight(J.explain(J.buildDossier(birth, p.settings || {}), LANGSEL), chart) };
   }
   return builtCache[key];
 }
@@ -387,22 +400,21 @@ function northChart(signs, lagnaSign, retro = {}, label = "Kundali") {
 const pill = (txt, cls) => `<span class="pill ${cls || ""}">${esc(txt)}</span>`;
 const verdictCls = v => /cancel|NOT|absent|very weak|vulnerable/.test(v) ? "bad" : /weak|reduced|obstructed|medium/.test(v) ? "warn" : "good";
 
-const TABS = [["kundali", "Kundali"], ["ask", "Ask"], ["life", "Life & dates"], ["dasha", "Dasha"], ["yogas", "Yogas & doshas"],
-  ["planets", "Planets"], ["strength", "Strength"], ["transits", "Transits"], ["remedies", "Remedies"], ["jaimini", "Jaimini"], ["time", "Birth time"]];
+const TABS = ["kundali", "ask", "life", "dasha", "yogas", "planets", "strength", "transits", "remedies", "jaimini", "time"];
 function renderReport() {
   const D = state.dossier, c = D.vimshottari.current, isEx = state.current.id === "example";
   $("#reportHead").innerHTML = `<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
-      <h2 style="margin:0">${esc(state.current.name || "Unnamed")}</h2>${isEx ? '<span class="example-flag">Example chart - add your own details</span>' : ""}</div>
+      <h2 style="margin:0">${esc(state.current.name || "Unnamed")}</h2>${isEx ? `<span class="example-flag">${u("example")}</span>` : ""}</div>
     <p class="note" style="margin:4px 0 0">${esc(personLabel(state.current))} · ${esc(D.input.timezone)}</p>
     <div class="summary">
-      <div><b>Lagna</b>${esc(D.lagna.sign)} ${esc(D.lagna.degree)}<br><span class="note">${esc(D.lagna.nakshatra)} pada ${D.lagna.pada}</span></div>
-      <div><b>Moon sign (rashi)</b>${esc(D.moon.sign)}<br><span class="note">${esc(D.moon.nakshatra)} pada ${D.moon.pada}</span></div>
-      <div><b>Running dasha</b>${esc(c.mahadasha)} / ${esc(c.antardasha)} / ${esc(c.pratyantar)}<br><span class="note">antardasha ends ${esc(c.ad_ends)}</span></div>
-      <div><b>Saturn now</b>${esc(D.transits_now.sade_sati_or_dhaiya || "No Sade Sati or Dhaiya")}</div>
+      <div><b>${u("lagna")}</b>${esc(LL().sign(D.lagna.sign))} ${esc(D.lagna.degree)}<br><span class="note">${esc(D.lagna.nakshatra)} pada ${D.lagna.pada}</span></div>
+      <div><b>${u("moonsign")}</b>${esc(LL().sign(D.moon.sign))}<br><span class="note">${esc(D.moon.nakshatra)} pada ${D.moon.pada}</span></div>
+      <div><b>${u("running")}</b>${esc(LP(c.mahadasha))} / ${esc(LP(c.antardasha))} / ${esc(LP(c.pratyantar))}<br><span class="note">${u("adends")} ${esc(c.ad_ends)}</span></div>
+      <div><b>${u("satnow")}</b>${esc(D.plain.saturn)}</div>
     </div>`;
   const tabs = $("#tabs"); tabs.innerHTML = "";
-  for (const [key, name] of TABS) {
-    const b = document.createElement("button"); b.textContent = name; b.setAttribute("role", "tab");
+  for (const key of TABS) {
+    const b = document.createElement("button"); b.textContent = u("t_" + key); b.setAttribute("role", "tab");
     b.setAttribute("aria-selected", String(key === state.tab)); b.onclick = () => { state.tab = key; renderReport(); };
     tabs.appendChild(b);
   }
@@ -420,17 +432,17 @@ const PANES = {
     const opts = Object.keys(D.vargas).filter(k => k !== "D1").map(k => `<option ${k === "D9" ? "selected" : ""}>${k}</option>`).join("");
     const hl = D.houses.map(h => `<tr><td>${h.house}</td><td>${esc(h.sign)}</td><td>${esc(h.lord)} <span class="note">in ${h.lord_in_house}</span></td><td>${esc(h.occupants.join(", ") || "—")}</td><td class="note">${esc(J.BHAVA_MEANING[h.house])}</td></tr>`).join("");
     const P = D.plain;
-    const simple = `<div class="simple"><h3>Your chart in simple words</h3>
-      <p><b>Right now:</b> ${esc(P.now || "")}</p>
-      <p><b>Saturn:</b> ${esc(P.saturn)}</p>
-      <p><b>Strongest areas of life:</b> ${esc(P.best.join(", "))}.</p>
-      <p><b>Weakest areas (need effort and care):</b> ${esc(P.worst.join(", "))}.</p>
-      <p><b>Health:</b> ${esc(P.health)}</p>
+    const simple = `<div class="simple"><h3>${u("simple")}</h3>
+      <p><b>${u("rightnow")}:</b> ${esc(P.now || "")}</p>
+      <p><b>${u("saturn")}:</b> ${esc(P.saturn)}</p>
+      <p><b>${u("best")}:</b> ${esc(P.best.join(", "))}.</p>
+      <p><b>${u("worst")}:</b> ${esc(P.worst.join(", "))}.</p>
+      <p><b>${u("health")}:</b> ${esc(P.health)}</p>
       <p>${esc(P.yogas)} ${esc(P.doshas)}</p>
-      <p class="note">Open "Life & dates" for each area with dates, or "Ask" to talk it through.</p></div>`;
+      <p class="note">${u("openlife")}</p></div>`;
     return simple + `<div class="charts"><figure>${northChart(d1, SIGNS.indexOf(D.lagna.sign), retro, "Rashi chart D1")}<figcaption>D1 Rashi · numbers are signs (1 = Aries)</figcaption></figure>
       <figure><div id="vargaSvg"></div><figcaption><select id="vargaSel" aria-label="Divisional chart">${opts}</select><span id="vargaCap"></span></figcaption></figure></div>
-      <h3>Houses</h3><div class="scroll"><table><tr><th>House</th><th>Sign</th><th>Lord</th><th>Planets</th><th>Meaning</th></tr>${hl}</table></div>`;
+      <h3>${u("houses")}</h3><div class="scroll"><table><tr><th>House</th><th>Sign</th><th>Lord</th><th>Planets</th><th>Meaning</th></tr>${hl}</table></div>`;
   },
   planets() {
     const D = state.dossier;
@@ -446,9 +458,9 @@ const PANES = {
       <b>Planetary war:</b> ${chip(D.planetary_war, w => pill(`${w.planets.join(" vs ")} → ${w.winner}`))}<br>
       <b>Gandanta:</b> ${chip(D.gandanta, g => pill(g.point, "warn"))}<br>
       <b>Bhava chalit shifts:</b> ${chip(D.bhava_chalit_shifts, s => pill(`${s.planet} ${s.whole_sign_house}→${s.chalit_house}`))}</p>
-      <h3>What each planet runs in your life</h3><p class="note">One planet runs several areas, so they move together in its periods.</p>
-      <div class="scroll"><table><tr><th>Planet</th><th>Runs these areas</th><th>Body</th><th>Its mahadasha</th></tr>${Object.entries(D.planet_map).map(([p, m]) => `<tr><td><b>${p}</b></td><td>${esc(m.runs_areas.join(", ") || "—")}${m.note ? `<br><span class="note">${esc(m.note)}</span>` : ""}</td><td class="note">${esc(m.body)}</td><td class="mono">${esc(m.mahadasha_years.join(", "))}</td></tr>`).join("")}</table></div>
-      <h3>Every strength and weakness, per planet</h3>${cond}`;
+      <h3>${u("planetmap")}</h3><p class="note">${u("planetmapnote")}</p>
+      <div class="scroll"><table><tr><th>${u("planet")}</th><th>${u("runs")}</th><th>${u("body")}</th><th>${u("itsmd")}</th></tr>${Object.entries(D.planet_map).map(([p, m]) => `<tr><td><b>${esc(LP(p))}</b></td><td>${esc(m.runs_area_keys.map(k => LL().AREA[k]).join(", ") || "—")}${m.note ? `<br><span class="note">${esc(m.note)}</span>` : ""}</td><td class="note">${esc(m.body)}</td><td class="mono">${esc(m.mahadasha_years.join(", "))}</td></tr>`).join("")}</table></div>
+      <h3>${u("everyplanet")}</h3>${cond}`;
   },
   yogas() {
     const D = state.dossier;
@@ -460,40 +472,40 @@ const PANES = {
     const d = D.doshas.map(x => `<details class="item" ${x.present ? "open" : ""}><summary><b>${esc(x.name)}</b> ${pill(x.status, x.present ? (x.cancellations.length ? "warn" : "bad") : "good")}${x.severity ? " " + pill("severity " + x.severity) : ""}<span style="flex-basis:100%">${esc(x.plain || "")}</span></summary><div class="body">
       ${x.present ? `${x.cancellations.length ? `<div class="warn">Cancellations: ${x.cancellations.map(esc).join("; ")}</div>` : ""}<div>Effect: ${esc(x.effect)}</div>` : ""}
       <div class="note">${esc(x.classical_status)}</div></div></details>`).join("");
-    return `<h3 style="margin-top:0">Yogas, with every cancellation checked</h3>${y}<h3>Doshas, with their exceptions</h3>${d}`;
+    return `<h3 style="margin-top:0">${u("yogash")}</h3>${y}<h3>${u("doshash")}</h3>${d}`;
   },
   dasha() {
     const D = state.dossier, v = D.vimshottari, now = D.generated_for_date;
-    const md = v.mahadashas.map(m => `<details class="item" ${m.start <= now && now < m.end ? "open" : ""}><summary><b>${m.lord}</b> <span class="mono">${m.start} → ${m.end}</span> <span class="note">age ${m.age_start}</span> ${pill(m.plain.tone, m.plain.tone === "good" ? "good" : m.plain.tone === "hard" ? "bad" : "warn")}</summary>
+    const md = v.mahadashas.map(m => `<details class="item" ${m.start <= now && now < m.end ? "open" : ""}><summary><b>${esc(LP(m.lord))}</b> <span class="mono">${m.start} → ${m.end}</span> <span class="note">${u("age")} ${m.age_start}</span> ${pill(m.plain.tone_label, m.plain.tone === "good" ? "good" : m.plain.tone === "hard" ? "bad" : "warn")}</summary>
       <div class="body"><p class="tone-${m.plain.tone}" style="margin:0">${esc(m.plain.text)}</p>
-      <div class="scroll"><table><tr><th>Sub-period</th><th>Dates</th><th>What it brings</th></tr>${m.antardashas.map(a => `<tr ${a.start <= now && now < a.end ? 'style="font-weight:600"' : ""}><td>${m.lord} / ${a.lord}<br>${pill(a.plain.tone, a.plain.tone === "good" ? "good" : a.plain.tone === "hard" ? "bad" : "warn")}</td><td class="mono">${a.start}<br>${a.end}</td><td>${esc(a.plain.text)}</td></tr>`).join("")}</table></div></div></details>`).join("");
+      <div class="scroll"><table><tr><th>${u("subperiod")}</th><th>${u("dates")}</th><th>${u("brings")}</th></tr>${m.antardashas.map(a => `<tr ${a.start <= now && now < a.end ? 'style="font-weight:600"' : ""}><td>${esc(LP(m.lord))} / ${esc(LP(a.lord))}<br>${pill(a.plain.tone_label, a.plain.tone === "good" ? "good" : a.plain.tone === "hard" ? "bad" : "warn")}</td><td class="mono">${a.start}<br>${a.end}</td><td>${esc(a.plain.text)}</td></tr>`).join("")}</table></div></div></details>`).join("");
     const hv = D.health_vigilance_periods.map(h => `<tr><td>${h.md} / ${h.ad}</td><td class="mono">${h.start} → ${h.end}</td><td class="note">${esc(h.why.join(", "))}</td></tr>`).join("");
-    const ch = D.life_chapters.map(c => `<tr ${c.is_current ? 'style="font-weight:600"' : ""}><td>${c.mahadasha}<br>${pill(c.tone, c.tone === "good" ? "good" : c.tone === "hard" ? "bad" : "warn")}</td><td class="mono">${c.from} → ${c.to}<br><span class="note">age ${c.age_from}-${c.age_to}</span></td><td>${esc(c.switches_on.join(", ") || "—")}${c.node_note ? `<br><span class="note">${esc(c.node_note)}</span>` : ""}</td></tr>`).join("");
-    const up = D.upcoming_5y.map(u => `<tr><td class="mono">${u.from} → ${u.to}</td><td>${esc(u.area)}</td><td>${pill(u.confidence, u.confidence === "high" ? "good" : "warn")}</td><td class="note">${esc(u.dasha)}</td></tr>`).join("");
-    return `<div class="simple"><h3>Right now</h3><p>${esc(D.plain.now || "")}</p></div>
-      <h3 style="margin-top:0">Chapters of your life</h3><p class="note">Each mahadasha is a chapter. These are the parts of life each chapter switches on.</p>
-      <div class="scroll"><table><tr><th>Chapter</th><th>When</th><th>Brings into focus</th></tr>${ch}</table></div>
-      <h3>Next 5 years, all areas together</h3><div class="scroll"><table><tr><th>When</th><th>Area</th><th>How sure</th><th>Dasha</th></tr>${up || '<tr><td class="note">Nothing medium or high.</td></tr>'}</table></div>
-      <h3>All periods</h3><p class="note">A dasha is a planet's period. Each one brings its own themes into your life; the sub-period (antardasha) decides what comes up in those years.</p><p>Birth dasha <b>${v.birth_dasha_lord}</b>, ${v.balance_at_birth_years} years left at birth · year = ${v.year_length_days} days</p>${md}
-      <h3>Health-vigilance periods</h3><p class="note">Dashas where both lords are marakas (2nd/7th) or 6/8/12 lords. Times to be careful with health, not predictions of death.</p>
+    const ch = D.life_chapters.map(c => `<tr ${c.is_current ? 'style="font-weight:600"' : ""}><td>${esc(LP(c.mahadasha))}<br>${pill(c.tone_label || c.tone, c.tone === "good" ? "good" : c.tone === "hard" ? "bad" : "warn")}</td><td class="mono">${c.from} → ${c.to}<br><span class="note">${u("age")} ${c.age_from}-${c.age_to}</span></td><td>${esc((c.switch_keys || []).map(k => LL().AREA[k]).join(", ") || "—")}${c.node_note ? `<br><span class="note">${esc(c.node_note)}</span>` : ""}</td></tr>`).join("");
+    const up = D.upcoming_5y.map(w => `<tr><td class="mono">${w.from} → ${w.to}</td><td>${esc(LL().AREA[w.area_key] || w.area)}</td><td>${pill(w.confidence, w.confidence === "high" ? "good" : "warn")}</td><td class="note">${esc(w.dasha.split("/").map(LP).join("/"))}</td></tr>`).join("");
+    return `<div class="simple"><h3>${u("rightnow")}</h3><p>${esc(D.plain.now || "")}</p></div>
+      <h3 style="margin-top:0">${u("chapters")}</h3><p class="note">${u("chaptersnote")}</p>
+      <div class="scroll"><table><tr><th>${u("chapter")}</th><th>${u("when")}</th><th>${u("focus")}</th></tr>${ch}</table></div>
+      <h3>${u("next5")}</h3><div class="scroll"><table><tr><th>${u("when")}</th><th>${u("area")}</th><th>${u("howsure")}</th><th>Dasha</th></tr>${up || `<tr><td class="note">${u("nothing")}</td></tr>`}</table></div>
+      <h3>${u("allperiods")}</h3><p class="note">${u("dashanote")}</p><p>Birth dasha <b>${v.birth_dasha_lord}</b>, ${v.balance_at_birth_years} years left at birth · year = ${v.year_length_days} days</p>${md}
+      <h3>${u("healthv")}</h3><p class="note">${u("healthvnote")}</p>
       <div class="scroll"><table>${hv}</table></div>`;
   },
   life() {
     const D = state.dossier;
-    return `<p class="note" style="margin-top:0">Each area shows: how strong it is in your chart, why (in simple words), and <b>when</b> things are likely to happen. Tap an area to open it.</p>` +
+    return `<p class="note" style="margin-top:0">${u("lifeintro")}</p>` +
     Object.entries(D.life_areas).map(([k, a]) => {
       const p = a.promise;
       const signs = (arr, plainArr, cls, mark) => arr.map((t, i) => `<li class="${cls}">${mark} ${esc(plainArr[i])}<span class="tech">${esc(t)}</span></li>`).join("");
-      const w = a.timing.windows.map(x => `<tr class="${x.is_past ? "note" : ""}"><td class="mono">${x.start} → ${x.end}<br><span class="note">age ${x.age_at_start}${x.is_past ? " · past" : ""}</span></td>
-        <td>${esc(x.plain)}<details><summary class="note">Astrology reasons</summary><span class="tech">${x.md}/${x.ad} dasha · ${x.factors.map(esc).join("<br>")}</span></details></td>
+      const w = a.timing.windows.map(x => `<tr class="${x.is_past ? "note" : ""}"><td class="mono">${x.start} → ${x.end}<br><span class="note">${u("age")} ${x.age_at_start}${x.is_past ? " · " + u("past") : ""}</span></td>
+        <td>${esc(x.plain)}<details><summary class="note">${u("reasons")}</summary><span class="tech">${x.md}/${x.ad} dasha · ${x.factors.map(esc).join("<br>")}</span></details></td>
         <td>${pill(x.confidence.split(" ")[0], /high/.test(x.confidence) ? "good" : /medium/.test(x.confidence) ? "warn" : "")}</td></tr>`).join("");
       const nx = a.timing.next;
-      return `<details class="item"><summary><b>${esc(p.area)}</b> ${pill(p.verdict, verdictCls(p.verdict))}${nx ? `<span class="note">next: ${nx.start} → ${nx.end} (${nx.confidence.split(" ")[0]})</span>` : ""}</summary><div class="body">
+      return `<details class="item"><summary><b>${esc(p.area_label || p.area)}</b> ${pill(p.verdict_label || p.verdict, verdictCls(p.verdict))}${nx ? `<span class="note">${u("next")}: ${nx.start} → ${nx.end} (${nx.confidence.split(" ")[0]})</span>` : ""}</summary><div class="body">
         <p style="margin:0"><b>${esc(p.plain)}</b></p>
         <ul class="plain meaning">${signs(p.favourable, p.favourable_plain, "good", "+")}${signs(p.unfavourable, p.unfavourable_plain, "bad", "−")}</ul>
-        <h3>When</h3>
-        <div class="scroll"><table><tr><th>When</th><th>What it means for you</th><th>How sure</th></tr>${w || '<tr><td colspan="3" class="note">No strong window in range.</td></tr>'}</table></div></div></details>`;
-    }).join("") + `<p class="note">"How sure" = high when your dasha and the slow planets Jupiter + Saturn both point to it; low when only the dasha does. Past windows are your test: if they match your real life, trust the future ones more.</p>`;
+        <h3>${u("when")}</h3>
+        <div class="scroll"><table><tr><th>${u("when")}</th><th>${u("whatmeans")}</th><th>${u("howsure")}</th></tr>${w || `<tr><td colspan="3" class="note">${u("nowindow")}</td></tr>`}</table></div></div></details>`;
+    }).join("") + `<p class="note">${u("lifefoot")}</p>`;
   },
   strength() {
     const D = state.dossier;
@@ -502,23 +514,23 @@ const PANES = {
     const sav = D.ashtakavarga.sav_by_house.map(h => `<td class="${h.quality === "weak" ? "bad" : /strong|good/.test(h.quality) ? "good" : ""}">${h.bindus}</td>`).join("");
     const bav = Object.entries(D.ashtakavarga.bav_by_sign).map(([p, r]) => `<tr><td>${p}</td>${Object.values(r).map(x => `<td>${x}</td>`).join("")}</tr>`).join("");
     return `<h3 style="margin-top:0">Shadbala (six-fold strength)</h3><div class="scroll"><table><tr><th></th><th>Sthana</th><th>Dig</th><th>Kala</th><th>Chesta</th><th>Naisargika</th><th>Drik</th><th>Rupas / needed</th><th>Ratio</th></tr>${sb}</table></div>
-      <h3>What this means for you</h3><ul class="plain meaning">${Object.entries(D.shadbala.planets).map(([p, s]) => `<li class="${s.ratio >= 1 ? "good" : "bad"}">${esc(s.plain)}</li>`).join("")}</ul>
-      <p class="note">Ratio above 1× = the planet has enough strength to deliver its results. Below 1× = it struggles, so its areas need more effort. ${D.shadbala.approximations.map(esc).join(" ")}</p>
+      <h3>${u("whatthis")}</h3><ul class="plain meaning">${Object.entries(D.shadbala.planets).map(([p, s]) => `<li class="${s.ratio >= 1 ? "good" : "bad"}">${esc(s.plain)}</li>`).join("")}</ul>
+      <p class="note">${u("ratiohelp")} ${D.shadbala.approximations.map(esc).join(" ")}</p>
       <h3>Sarvashtakavarga by house</h3><div class="scroll"><table><tr>${[...Array(12)].map((_, i) => `<th>H${i + 1}</th>`).join("")}</tr><tr>${sav}</tr></table></div>
-      <p class="note">28+ points = that part of life comes easily; under 25 = it needs extra effort.</p>
-      <ul class="plain meaning">${D.ashtakavarga.sav_by_house.map(h => `<li class="${h.quality === "weak" ? "bad" : h.quality === "average" ? "" : "good"}">House ${h.house} - ${esc(h.plain)}</li>`).join("")}</ul>
+      <p class="note">${u("savhelp")}</p>
+      <ul class="plain meaning">${D.ashtakavarga.sav_by_house.map(h => `<li class="${h.quality === "weak" ? "bad" : h.quality === "average" ? "" : "good"}">${u("house")} ${h.house} - ${esc(h.plain)}</li>`).join("")}</ul>
       <h3>Bhinnashtakavarga by sign</h3><div class="scroll"><table><tr><th></th>${SIGNS.map(s => `<th>${s.slice(0, 3)}</th>`).join("")}</tr>${bav}</table></div>`;
   },
   transits() {
     const D = state.dossier, t = D.transits_now;
-    const rows = t.planets.map(p => `<tr><td>${p.planet}${p.retrograde && !["Rahu", "Ketu"].includes(p.planet) ? " ᴿ" : ""}</td><td class="mono">${esc(p.sign)} ${p.degree}°</td><td>${p.house_from_lagna}</td><td>${p.house_from_moon}</td>
+    const rows = t.planets.map(p => `<tr><td>${esc(LP(p.planet))}${p.retrograde && !["Rahu", "Ketu"].includes(p.planet) ? " ᴿ" : ""}</td><td class="mono">${esc(LL().sign(p.sign))} ${p.degree}°</td><td>${p.house_from_lagna}</td><td>${p.house_from_moon}</td>
       <td><span class="${/^favourable(;|$)/.test(p.verdict) ? "good" : /obstructed/.test(p.verdict) ? "warn" : "bad"}">${esc(p.plain)}</span><span class="tech">${esc(p.verdict)}</span></td></tr>`).join("");
     const sc = D.saturn_cycles.map(s => `<tr><td>${esc(s.type)}</td><td class="mono">${s.start} → ${s.end}</td></tr>`).join("");
-    return `<p class="note" style="margin-top:0">Transits are where the planets are today, counted from your Moon sign. Fast planets (Sun, Moon, Mercury, Venus, Mars) change your weeks; slow ones (Jupiter, Saturn, Rahu, Ketu) shape whole years.</p><p>Today (${t.date}): Saturn is ${t.saturn_from_moon} from your Moon · ${esc(t.sade_sati_or_dhaiya || "no Sade Sati or Dhaiya")} · Jupiter + Saturn both touch houses ${t.double_transit_houses_from_lagna.join(", ") || "none"}</p>
-      <div class="scroll"><table><tr><th>Planet</th><th>Now in</th><th>From lagna</th><th>From Moon</th><th>What it means for you now</th></tr>${rows}</table></div>
-      <h3>Slow planets, 10 years back to 10 years ahead</h3><p class="note">Where Saturn, Jupiter, Rahu and Ketu stay, the house they hit, and the body region they press on.</p>
-      <div class="scroll"><table><tr><th>Planet</th><th>When</th><th>Sign</th><th>From lagna / Moon</th><th>Body region</th></tr>${D.slow_transits.map(t => `<tr class="${t.is_past ? "note" : ""}" ${t.is_current ? 'style="font-weight:600"' : ""}><td>${t.planet}</td><td class="mono">${t.from} → ${t.to}</td><td>${t.sign}</td><td>${t.house_from_lagna} / ${t.house_from_moon} ${pill(t.favourable_from_moon ? "good" : "hard", t.favourable_from_moon ? "good" : "bad")}</td><td>${esc(t.body_region)}</td></tr>`).join("")}</table></div>
-      <h3>Saturn cycles over your life</h3><div class="scroll"><table>${sc}</table></div>`;
+    return `<p class="note" style="margin-top:0">${u("trintro")}</p><p>${t.date}: ${esc(D.plain.saturn)}</p>
+      <div class="scroll"><table><tr><th>${u("planet")}</th><th>${u("nowin")}</th><th>${u("fromlagna")}</th><th>${u("frommoon")}</th><th>${u("meansnow")}</th></tr>${rows}</table></div>
+      <h3>${u("slow")}</h3><p class="note">${u("slownote")}</p>
+      <div class="scroll"><table><tr><th>${u("planet")}</th><th>${u("when")}</th><th>${u("sign")}</th><th>${u("fromlagna")} / ${u("frommoon")}</th><th>${u("bodyreg")}</th></tr>${D.slow_transits.map(t => `<tr class="${t.is_past ? "note" : ""}" ${t.is_current ? 'style="font-weight:600"' : ""}><td>${esc(LP(t.planet))}</td><td class="mono">${t.from} → ${t.to}</td><td>${esc(LL().sign(t.sign))}</td><td>${t.house_from_lagna} / ${t.house_from_moon} ${pill(t.favourable_from_moon ? "good" : "hard", t.favourable_from_moon ? "good" : "bad")}</td><td>${esc(t.body_region)}</td></tr>`).join("")}</table></div>
+      <h3>${u("satcycles")}</h3><div class="scroll"><table>${sc}</table></div>`;
   },
   remedies() {
     const D = state.dossier, g = D.remedies.gemstones, lk = D.remedies.lal_kitab;
@@ -528,11 +540,11 @@ const PANES = {
       <td class="note">${r.reasons.map(esc).join("<br>")}${r.cautions.length ? `<br><span class="warn">${r.cautions.map(x => "⚠ " + esc(x)).join("<br>")}</span>` : ""}</td></tr>`).join("");
     const md = D.remedies.mantra_daan.map(m => `<tr><td>${m.planet}</td><td class="note">${esc(m.why)}</td><td>${esc(m.beej_mantra)}<br><span class="note">${m.japa_count} japa · ${esc(m.worship)}</span></td><td class="note">${esc(m.daan)}</td></tr>`).join("");
     const lkr = lk.planets.map(p => `<tr><td>${p.planet}</td><td>${p.lk_house}</td><td>${esc(p.state)}</td><td>${p.soya_sleeping === null ? "—" : p.soya_sleeping ? "sleeping" : "awake"}</td><td class="note">${esc(p.general_remedy)}</td></tr>`).join("");
-    return `<h3 style="margin-top:0">Gemstones</h3>${g.conflicts.length ? `<p class="bad">${g.conflicts.map(esc).join("<br>")}</p>` : ""}
+    return `<h3 style="margin-top:0">${u("gems")}</h3>${g.conflicts.length ? `<p class="bad">${g.conflicts.map(esc).join("<br>")}</p>` : ""}
       <div class="scroll"><table><tr><th>Planet</th><th>Gem</th><th>Status</th><th>Finger</th><th>How</th><th>Why and cautions</th></tr>${recs}</table></div>
       <ul class="plain note">${g.general_rules.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
-      <h3>Mantra and daan</h3><div class="scroll"><table>${md || '<tr><td class="note">No planet needs it.</td></tr>'}</table></div>
-      <h3>Lal Kitab</h3><div class="scroll"><table><tr><th>Planet</th><th>LK house</th><th>State</th><th>Soya</th><th>General remedy</th></tr>${lkr}</table></div>
+      <h3>${u("mantra")}</h3><div class="scroll"><table>${md || '<tr><td class="note">No planet needs it.</td></tr>'}</table></div>
+      <h3>${u("lalkitab")}</h3><div class="scroll"><table><tr><th>Planet</th><th>LK house</th><th>State</th><th>Soya</th><th>General remedy</th></tr>${lkr}</table></div>
       <p><b>Rin (karmic debts):</b> ${lk.rin.length ? lk.rin.map(r => pill(`${r.rin} (${r.caused_by.join(", ")})`, "warn")).join(" ") : "none"}</p>
       ${lk.rin.map(r => `<p class="note">${esc(r.rin)}: ${esc(r.remedy)}</p>`).join("")}
       <ul class="plain note">${lk.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>`;
@@ -552,28 +564,26 @@ const PANES = {
     const rows = Object.entries(b.points).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v.value)}</td><td class="mono">${v.stable_from_minutes} to +${v.stable_to_minutes} min</td>
       <td>${pill(v.reliability.split(" - ")[0], /highly/.test(v.reliability) ? "bad" : /sensitive/.test(v.reliability) ? "warn" : "good")}</td></tr>`).join("");
     const vr = Object.entries(D.variants_in_use).map(([k, v]) => `<details class="item"><summary>${esc(k.replace(/_/g, " "))}: <b>${esc(typeof v.choice === "object" ? "standard table" : v.choice)}</b></summary><div class="body note">${esc(v.note)}</div></details>`).join("");
-    return `<h3 style="margin-top:0">How much your birth time matters</h3><div class="scroll"><table><tr><th>Point</th><th>Value</th><th>Stays the same within</th><th>Reliability</th></tr>${rows}</table></div>
+    return `<h3 style="margin-top:0">${u("btmatters")}</h3><div class="scroll"><table><tr><th>Point</th><th>Value</th><th>Stays the same within</th><th>Reliability</th></tr>${rows}</table></div>
       ${(b.boundary_planets || []).map(x => `<p class="warn">${esc(x)}</p>`).join("")}
       <p class="note">${esc(b.limits)}</p>
-      <h3>Correct the birth time from real events</h3>
+      <h3>${u("rectify")}</h3>
       <p class="note">Add 2-4 past events with dates. The engine tries times around your birth time and ranks them by how well the dasha at each event fits.</p>
       <div class="form" id="rectForm"></div>
       <div id="rectOut"></div>
-      <h3>Where the classical texts disagree</h3>${vr}`;
+      <h3>${u("disagree")}</h3>${vr}`;
   },
   ask() {
     const f = state.current.facts || "", ex = state.current.id === "example";
-    return `<details class="facts" ${f ? "" : "open"}><summary><b>Facts about ${esc(state.current.name || "this person")}</b> <span class="note">${f ? "saved - the chat reads these every time" : "add these so answers fit real life"}</span></summary>
-      <textarea id="factsIn" rows="5" ${ex ? "disabled" : ""} placeholder="What do they do (study/job, where)? Relationship status? Family: siblings and children with birth years, parents' health. Important past events with month-year (job, moves, relationships, illnesses, injuries).">${esc(f)}</textarea>
-      <div class="confirm"><button class="ghost" id="factsSave" ${ex ? "disabled" : ""}>Save facts</button><span class="note" id="factsMsg">${ex ? "Make your own kundali first." : ""}</span></div></details>
+    return `<details class="facts" ${f ? "" : "open"}><summary><b>${u("facts")} ${esc(state.current.name || "")}</b> <span class="note">${f ? u("factssaved") : u("factsadd")}</span></summary>
+      <textarea id="factsIn" rows="5" ${ex ? "disabled" : ""} placeholder="${esc(u("factsph"))}">${esc(f)}</textarea>
+      <div class="confirm"><button class="ghost" id="factsSave" ${ex ? "disabled" : ""}>${u("savefacts")}</button><span class="note" id="factsMsg">${ex ? u("makefirst") : ""}</span></div></details>
     ${ex ? "" : refBox()}
     <div class="chat"><div class="log" id="log"></div>
-      <div class="chips" id="chips">${["Give me a full, honest life reading", "Meri shaadi kab hogi aur spouse kaisa hoga?", "Career: peaks and falls with dates",
-        "How is my mind and emotional stability?", "Which gemstone should I wear, and which to avoid?", "What do the next 5 years look like?"]
-        .map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
-      <div class="composer"><textarea id="askIn" rows="2" placeholder="Ask in Hindi, English or Hinglish"></textarea>
-      <button id="askGo">Ask</button><button class="ghost" id="askStop" hidden>Stop</button></div>
-      <p class="note"><span id="askNote">Answers use your Claude plan. Each answer checks the full chart report first, so it can take up to a minute.</span> <button class="link" id="askClear">Clear this chat</button></p></div>`;
+      <div class="chips" id="chips">${(CHIPS[LANGSEL] || CHIPS.en).map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+      <div class="composer"><textarea id="askIn" rows="2" placeholder="${esc(u("askph"))}"></textarea>
+      <button id="askGo">${u("askbtn")}</button><button class="ghost" id="askStop" hidden>${u("stop")}</button></div>
+      <p class="note"><span id="askNote">${u("asknote")}</span> <button class="link" id="askClear">${u("clear")}</button></p></div>`;
   },
 };
 function wireVarga() {
@@ -745,9 +755,9 @@ function refBox() {
   const others = state.people.filter(p => p.id !== state.current.id), refs = state.current.refs || [];
   const rows = others.map(p => { const r = refs.find(x => x.id === p.id); return `<div class="confirm"><label style="display:flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" data-ref="${esc(p.id)}" ${r && r.on !== false ? "checked" : ""} style="width:auto"> ${esc(p.name)}</label>
     <input data-rel="${esc(p.id)}" value="${esc(r ? r.relation : "")}" placeholder="relation, e.g. brother" style="width:auto;flex:1;min-width:120px"></div>`; }).join("");
-  return `<details class="facts"><summary><b>Reference charts</b> <span class="note">${refs.filter(r => r.on !== false).length ? refs.filter(r => r.on !== false).length + " in use" : "use a family member's chart to cross-check timing"}</span></summary>
+  return `<details class="facts"><summary><b>${u("refs")}</b> <span class="note">${refs.filter(r => r.on !== false).length ? refs.filter(r => r.on !== false).length + " " + u("inuse") : u("refshint")}</span></summary>
     ${rows || '<p class="note">No other saved charts yet. Make one with "+ New person", or just tell the chat: "mere bhai ka chart bhi dekho - 12 Nov 2017, 10:20 am, Sonipat".</p>'}
-    ${rows ? '<div class="confirm"><button class="ghost" id="refSave">Save references</button><span class="note" id="refMsg"></span></div>' : ""}</details>`;
+    ${rows ? `<div class="confirm"><button class="ghost" id="refSave">${u("saverefs")}</button><span class="note" id="refMsg"></span></div>` : ""}</details>`;
 }
 function compactForChat(D) {
   const C = JSON.parse(JSON.stringify(D));
@@ -782,7 +792,8 @@ async function sendChat(text) {
   while (bytes(history) > budget && history.length > 1) history = history.slice(2);
   while (history.length && history[0].role !== "user") history = history.slice(1);
   const facts = (state.current.facts || "").trim();
-  const head = RULES + `\n\nTODAY: ${new Date().toISOString().slice(0, 10)}\n\nKNOWN FACTS (from the user):\n${facts || "(none given yet - ask when a reading depends on them)"}\n\nDOSSIER (JSON):\n` + dossierText;
+  const langLine = { en: "Write in English.", hi: "Write in Hinglish (Hindi in Roman script, the way the user types).", hd: "Write in Hindi using Devanagari script." }[LANGSEL] || "";
+  const head = RULES + `\n\nLANGUAGE: ${langLine} If the user clearly writes in a different language, follow the user.` + `\n\nTODAY: ${new Date().toISOString().slice(0, 10)}\n\nKNOWN FACTS (from the user):\n${facts || "(none given yet - ask when a reading depends on them)"}\n\nDOSSIER (JSON):\n` + dossierText;
   const refs = (state.current.refs || []).map(r => ({ r, p: state.people.find(x => x.id === r.id) })).filter(x => x.p && x.r.on !== false);
   let refText = "";
   for (const { r, p } of refs) { try { refText += `\n\nREFERENCE CHART - ${p.name} (${r.relation}):\n` + JSON.stringify(refSummary(p, r.relation)); } catch (e) {} }
@@ -837,6 +848,14 @@ async function wireChat() {
 }
 
 // ------------------------------------------------------------------ start
+$("#langSel").value = LANGSEL;
+$("#langSel").onchange = e => {
+  LANGSEL = e.target.value;
+  try { localStorage.setItem("jy_lang", LANGSEL); } catch (err) {}
+  applyStaticI18n();
+  if (state.current) openPerson(state.current);
+};
+applyStaticI18n();
 (async function start() {
   openPerson(EXAMPLE);
   fillForm(EXAMPLE);

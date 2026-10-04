@@ -61,7 +61,8 @@
     for (const p of PLANETS) {
       const row = D.planets.find(x => x.planet === p);
       const mds = v.mahadashas.filter(m => m.lord === p).map(m => `${fmtYm(m.start)} to ${fmtYm(m.end)}`);
-      planet_map[p] = { runs_areas: areasOf(p, owners).map(a => AREA_SHORT[a]), house: row.house, owns: row.owns_houses,
+      const keys = areasOf(p, owners);
+      planet_map[p] = { runs_areas: keys.map(a => AREA_SHORT[a]), runs_area_keys: keys, house: row.house, owns: row.owns_houses,
         sign: row.sign, dignity: row.dignity, body: BODY_PLANET[p], mahadasha_years: mds,
         condition_net: D.planet_condition[p].net, functional: D.functional_nature.planets[p].verdict,
         note: (p === "Rahu" || p === "Ketu") ? NODE_NOTES[row.house] || "" : "" };
@@ -71,13 +72,13 @@
     const life_chapters = D.vimshottari.mahadashas.filter(m => age(Date.parse(m.start)) < 100).map(m => {
       const pm = planet_map[m.lord];
       return { mahadasha: m.lord, from: m.start.slice(0, 7), to: m.end.slice(0, 7), age_from: Math.max(0, age(Date.parse(m.start))),
-        age_to: age(Date.parse(m.end)), tone: m.plain.tone, themes: m.plain.text, switches_on: pm.runs_areas,
+        age_to: age(Date.parse(m.end)), tone: m.plain.tone, tone_label: m.plain.tone_label, themes: m.plain.text, switches_on: pm.runs_areas, switch_keys: pm.runs_area_keys,
         node_note: pm.note, is_current: Date.parse(m.start) <= nowMs && nowMs < Date.parse(m.end) };
     });
     // timeline of antardashas, all areas at once
     const timeline = periodsBetween(v, nowMs - 10 * 365.25 * DAY, nowMs + 10 * 365.25 * DAY).map(per => {
-      const ad = areasOf(per.ad, owners).map(a => AREA_SHORT[a]);
-      return { from: fmtYm(per.start), to: fmtYm(per.end), dasha: `${per.md}/${per.ad}`, areas_switched_on: ad,
+      const keys = areasOf(per.ad, owners), ad = keys.map(a => AREA_SHORT[a]);
+      return { from: fmtYm(per.start), to: fmtYm(per.end), dasha: `${per.md}/${per.ad}`, areas_switched_on: ad, area_keys: keys,
         body_watch: BODY_PLANET[per.ad], is_current: per.start <= nowMs && nowMs < per.end, is_past: per.end < nowMs };
     });
     // slow transits: sign changes, 10 years back to 10 years ahead
@@ -117,7 +118,7 @@
     const upcoming_5y = [];
     for (const [k, a] of Object.entries(D.life_areas)) for (const w of a.timing.windows)
       if (w.end >= nowYm && w.start <= until && !/^low/.test(w.confidence))
-        upcoming_5y.push({ from: w.start, to: w.end, area: AREA_SHORT[k], confidence: w.confidence.split(" ")[0], dasha: `${w.md}/${w.ad}` });
+        upcoming_5y.push({ from: w.start, to: w.end, area: AREA_SHORT[k], area_key: k, confidence: w.confidence.split(" ")[0], dasha: `${w.md}/${w.ad}` });
     upcoming_5y.sort((x, y) => (x.from < y.from ? -1 : x.from > y.from ? 1 : 0));
     // physical meaning of afflictions
     for (const p of PLANETS) D.planet_condition[p].body = BODY_PLANET[p];
