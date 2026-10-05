@@ -422,27 +422,30 @@
   }
   /* Planets acting on a house outrank the sign (x0.6); D9 items count x0.3 when the D9 lagna is birth-time sensitive. */
   function tallyTraits(ind, d9ok = true) {
+    const wOf = i => (WEIGHT[i.weight] || 1) * (i.sign !== undefined ? 0.6 : 1) * (i.d9 && !d9ok ? 0.3 : 1);
+    const tOf = i => i.planet ? TRAIT_PLANET[i.planet] : TRAIT_SIGN[i.sign];
     const out = {};
     for (const k of ["h", "b", "c"]) {
-      let sum = 0, wsum = 0; const pro = [], con = [];
-      for (const i of ind) {
-        const t = i.planet ? TRAIT_PLANET[i.planet] : TRAIT_SIGN[i.sign];
-        if (!t || t[k] === undefined) continue;
-        const w = (WEIGHT[i.weight] || 1) * (i.sign !== undefined ? 0.6 : 1) * (i.d9 && !d9ok ? 0.3 : 1);
-        sum += t[k] * w; wsum += w;
-        (t[k] > 0 ? pro : t[k] < 0 ? con : []).push(i.factor);
-      }
-      if (!wsum) { out[k] = { verdict: "no indication", confidence: "none" }; continue; }
-      const score = sum / wsum, idx = score > 0.25 ? 2 : score < -0.25 ? 0 : 1;
-      const conf = Math.abs(score) > 0.6 ? "clear" : Math.abs(score) > 0.25 ? "leaning" : "mixed / unclear";
-      out[k] = { verdict: WORDS[k][idx], confidence: conf, score: round(score, 2), pointing_up: pro, pointing_down: con };
+      const votes = ind.map(i => ({ i, t: tOf(i), w: wOf(i) })).filter(x => x.t && x.t[k] !== undefined);
+      if (!votes.length) { out[k] = { verdict: "no indication", confidence: "none" }; continue; }
+      const wsum = votes.reduce((a, x) => a + x.w, 0), score = votes.reduce((a, x) => a + x.t[k] * x.w, 0) / wsum;
+      const idx = score > 0.15 ? 2 : score < -0.15 ? 0 : 1;
+      const side = v => v > 0 ? WORDS[k][2] : v < 0 ? WORDS[k][0] : WORDS[k][1];
+      const pro = votes.filter(x => Math.sign(x.t[k]) === Math.sign(idx - 1) && x.t[k] !== 0).map(x => x.i.factor);
+      const con = votes.filter(x => x.t[k] !== 0 && Math.sign(x.t[k]) !== Math.sign(idx - 1)).map(x => `${x.i.factor} (says ${side(x.t[k])})`);
+      // do the heaviest indicators disagree? then say so instead of averaging it away
+      const top = Math.max(...votes.map(x => x.w)), heavy = votes.filter(x => x.w >= top * 0.99 && x.t[k] !== 0);
+      const split = new Set(heavy.map(x => Math.sign(x.t[k]))).size > 1;
+      const conf = split ? "split" : Math.abs(score) > 0.6 ? "clear" : Math.abs(score) > 0.3 ? "leaning" : "slight lean";
+      out[k] = { verdict: WORDS[k][idx], confidence: conf, score: round(score, 2), supported_by: pro, against: con,
+        split_note: split ? heavy.map(x => `${x.i.factor} says ${side(x.t[k])}`).join("; ") : "" };
     }
     const faces = {};
-    for (const i of ind) { const t = i.planet ? TRAIT_PLANET[i.planet] : TRAIT_SIGN[i.sign]; if (t && t.f) faces[t.f] = (faces[t.f] || 0) + (WEIGHT[i.weight] || 1) * (i.sign !== undefined ? 0.6 : 1) * (i.d9 && !d9ok ? 0.3 : 1); }
+    for (const i of ind) { const t = tOf(i); if (t && t.f) faces[t.f] = (faces[t.f] || 0) + wOf(i); }
     const fe = Object.entries(faces).sort((a, b) => b[1] - a[1]);
-    out.face = fe.length ? { verdict: fe[0][0], confidence: fe.length > 1 && fe[1][1] >= fe[0][1] * 0.75 ? "mixed / unclear" : "leaning", votes: faces } : { verdict: "no indication", confidence: "none" };
+    out.face = fe.length ? { verdict: fe[0][0], confidence: fe.length > 1 && fe[1][1] >= fe[0][1] * 0.75 ? `close - runner-up ${fe[1][0]}` : "leaning", votes: faces } : { verdict: "no indication", confidence: "none" };
     return { height: out.h, build: out.b, complexion: out.c, face: out.face,
-      rule: "Lead with each trait's verdict. Say 'unclear' when confidence is mixed. Height is relative to the average for the person's sex and region. Never lead with a trait that lost the vote." };
+      rule: "Always state each trait's verdict (the leading side) with its confidence and the strongest countervote. If confidence is 'split', say plainly that the two strongest indicators disagree and name them - do not average them into one word. Height is relative to the average for the person's sex and region." };
   }
   function selfAppearance(c) {
     const ind = [{ factor: `lagna ${SIGNS[c.lagna]}`, sign: c.lagna, weight: "high" },

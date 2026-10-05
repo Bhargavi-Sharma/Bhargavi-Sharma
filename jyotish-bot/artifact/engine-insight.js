@@ -122,7 +122,21 @@
     upcoming_5y.sort((x, y) => (x.from < y.from ? -1 : x.from > y.from ? 1 : 0));
     // physical meaning of afflictions
     for (const p of PLANETS) D.planet_condition[p].body = BODY_PLANET[p];
-    Object.assign(D, { planet_map, life_chapters, timeline, slow_transits, upcoming_5y });
+    // marital status is something the chart predicts - state it as a checkable prediction instead of asking
+    const ageNow = Math.round(((nowMs - birthMs) / DAY / 365.25) * 10) / 10;
+    const mw = D.life_areas.marriage.timing.windows, pastHigh = mw.filter(w => w.is_past && /^high/.test(w.confidence));
+    const mp = D.life_areas.marriage.promise.verdict;
+    const ymMonths = ym => { const [y, m] = ym.split("-").map(Number); return y * 12 + m; };
+    const nextW = mw.find(w => !w.is_past), nextTxt = nextW ? `${nextW.start} to ${nextW.end} (${nextW.confidence.split(" ")[0]})` : "none in range";
+    const settled = pastHigh.filter(w => ymMonths(nowYm) - ymMonths(w.end) > 12);  // ended over a year ago - had time to happen
+    let status;
+    if (ageNow < 18) status = "not married (under 18)";
+    else if (settled.length && ageNow >= 22) status = `probably married - the first strong window was ${settled[0].start} to ${settled[0].end} (age ${settled[0].age_at_start})`;
+    else if (pastHigh.length) status = `a strong marriage/commitment window ran ${pastHigh[0].start} to ${pastHigh[0].end} - expect a serious relationship, engagement or marriage fixed around then; if nothing was fixed, the next window is ${nextTxt}`;
+    else status = `probably not married yet - no strong marriage window has passed; next: ${nextTxt}`;
+    const marital_estimate = { age_now: ageNow, promise: mp, estimate: status, past_strong_windows: pastHigh.map(w => `${w.start} to ${w.end}`),
+      note: "A prediction from dashas and transits, not a known fact. KNOWN FACTS override it." };
+    Object.assign(D, { planet_map, life_chapters, timeline, slow_transits, upcoming_5y, marital_estimate });
     return D;
   }
 
