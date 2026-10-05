@@ -136,7 +136,17 @@
     else status = `probably not married yet - no strong marriage window has passed; next: ${nextTxt}`;
     const marital_estimate = { age_now: ageNow, promise: mp, estimate: status, past_strong_windows: pastHigh.map(w => `${w.start} to ${w.end}`),
       note: "A prediction from dashas and transits, not a known fact. KNOWN FACTS override it." };
-    Object.assign(D, { planet_map, life_chapters, timeline, slow_transits, upcoming_5y, marital_estimate });
+    // how many of the 9 planets count as significators per area - when it is 7+, almost every dasha "fits" every area,
+    // so after-the-fact explanations are always available and prove nothing
+    const breadth = {};
+    for (const [k, a] of Object.entries(D.life_areas)) breadth[k] = Object.keys(a.timing.significators || {}).length;
+    const wide = Object.entries(breadth).filter(([, n]) => n >= 7).map(([k]) => k);
+    const significator_breadth = { per_area: breadth, too_wide: wide,
+      note: wide.length ? `In this chart ${wide.length} of ${Object.keys(breadth).length} areas have 7-9 of the 9 planets as significators. Any dasha can be made to 'explain' any event in those areas after the fact - such explanations carry no evidence. Only predictions made before the event, and backtest scores, count.` : "" };
+    // Saturn's sign as body region (Kalapurusha) - a hypothesis to test forward, not an established rule
+    const body_watch = { hypothesis: "Injuries/health trouble tend to hit the body region of the sign Saturn is transiting (Kalapurusha: Aries head ... Pisces feet). Unproven: treat as something to test forward, record hits AND misses.",
+      saturn: slow_transits.filter(r => r.planet === "Saturn" && !r.is_past).map(r => ({ from: r.from, to: r.to, sign: r.sign, body_region: r.body_region, current: r.is_current })) };
+    Object.assign(D, { planet_map, life_chapters, timeline, slow_transits, upcoming_5y, marital_estimate, significator_breadth, body_watch });
     return D;
   }
 
