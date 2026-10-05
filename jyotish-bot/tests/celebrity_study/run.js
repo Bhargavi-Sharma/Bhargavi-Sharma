@@ -1,7 +1,7 @@
 global.Astronomy=require(process.env.ASTRONOMY_ENGINE || 'astronomy-engine');
 const J=require('../../artifact/engine-time.js');
 const fs=require('fs'); const DAY=86400000;
-const recs=JSON.parse(fs.readFileSync('aa.json'));
+const recs=JSON.parse(fs.readFileSync(process.env.REC||'aa.json'));
 // PRE-REGISTERED mapping (fixed before looking at any score)
 const MAP={'Relationship : Marriage':'marriage','Relationship : Divorce dates':'marriage','Death of Mate':'marriage',
  'Relationship : Begin significant relationship':'love','Relationship : End significant relationship':'love','Relationship : Meet a significant person':'love',
@@ -47,4 +47,4 @@ for(let i=a0;i<Math.min(a1,recs.length);i++){const r=recs[i];
     out.push({i,name:r.name,area,code,ym,real:Math.round(real.p),realNamed:real.named,ctl:ctl?Math.round(ctl.p):null,ctlNamed:ctl?ctl.named:null});}
   if(i%50===0) process.stderr.write(i+' ');
 }
-fs.writeFileSync(`res_${a0}_${a1}.json`,JSON.stringify(out));
+fs.writeFileSync(`${process.env.OUT||'res'}_${a0}_${a1}.json`,JSON.stringify(out));

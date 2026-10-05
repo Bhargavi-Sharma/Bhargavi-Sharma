@@ -1,0 +1,14 @@
+
+G1: 22398 people with a single-planet profession group
+Mars     n= 7425  linked in own profession 40.7%  in other professions 41.8%  diff -1.1 ±1.4
+Sun      n= 1977  linked in own profession 30.7%  in other professions 31.1%  diff -0.4 ±2.1
+Venus    n= 7965  linked in own profession 41.8%  in other professions 42.9%  diff -1.1 ±1.4
+Mercury  n= 3474  linked in own profession 44.4%  in other professions 43.7%  diff +0.8 ±1.8
+Jupiter  n= 1557  linked in own profession 39.2%  in other professions 40.2%  diff -1.0 ±2.5
+
+G2: 8345 people with a single-planet profession group
+Mars     n= 1828  linked in own profession 42.2%  in other professions 41.6%  diff +0.7 ±2.6
+Sun      n=  556  linked in own profession 31.5%  in other professions 30.6%  diff +0.9 ±4.0
+Venus    n= 3643  linked in own profession 41.3%  in other professions 41.7%  diff -0.4 ±2.1
+Mercury  n= 1928  linked in own profession 44.5%  in other professions 42.6%  diff +1.9 ±2.5
+Jupiter  n=  390  linked in own profession 39.2%  in other professions 40.2%  diff -1.0 ±5.0
