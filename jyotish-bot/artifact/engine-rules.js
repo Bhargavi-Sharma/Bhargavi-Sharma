@@ -2,7 +2,7 @@
 (function (root) {
   const J = root.J || require("./engine-core.js");
   const { PLANETS, SEVEN, SIGNS, SIGN_LORD, MODALITY, OWN_SIGNS, EXALTATION, NATURAL_FRIENDS, GANDMOOL, houseFrom, pyList,
-    exaltSign, dignity, baladiAvastha, nakshatraOf, round, pyNum } = J;
+    exaltSign, dignity, baladiAvastha, nakshatraOf, round, pyNum, combustion } = J;
   const pyNums = a => "[" + a.join(", ") + "]";
   const BENEFICS = ["Jupiter", "Venus", "Mercury"];
   const MALEFICS = ["Sun", "Mars", "Saturn", "Rahu", "Ketu"];
@@ -420,32 +420,86 @@
     const span = 30 / 9, off = c.asc % span;
     return Math.round(Math.min(off, span - off) * 4);
   }
-  /* Planets acting on a house outrank the sign (x0.6); D9 items count x0.3 when the D9 lagna is birth-time sensitive. */
-  function tallyTraits(ind, d9ok = true) {
-    const wOf = i => (WEIGHT[i.weight] || 1) * (i.sign !== undefined ? 0.6 : 1) * (i.d9 && !d9ok ? 0.3 : 1);
+  /* How much say a planet gets in describing a body: a planet that cannot deliver results (sandhi degree, Mrita/Bala
+     avastha, enemy sign, debilitated, combust) should not out-describe a strong one (dig bala, own/exalted, lagna lord).
+     Returns a multiplier (0.3 - 1.6) and the reasons, so ties between equally-placed planets are broken by condition. */
+  const DIG_HOUSE = { Sun: 10, Mars: 10, Jupiter: 1, Mercury: 1, Moon: 4, Venus: 4, Saturn: 7 };
+  const DIG_MULT = { Exalted: 1.3, Moolatrikona: 1.2, Own: 1.2, "Great Friend": 1.1, Friend: 1.05, Neutral: 1, Enemy: 0.8, "Great Enemy": 0.65, Debilitated: 0.5 };
+  function bodyStrength(c, p) {
+    let m = 1; const why = [];
+    const deg = c.lon[p] % 30;
+    if (!["Rahu", "Ketu"].includes(p)) {
+      const dm = DIG_MULT[c.dig[p]] ?? 1;
+      if (dm !== 1) { m *= dm; why.push(c.dig[p]); }
+      const av = baladiAvastha(c.sign[p], deg), am = /^Mrita/.test(av) ? 0.55 : /^Vriddha/.test(av) ? 0.75 : /^Bala/.test(av) ? 0.8 : /^Kumara/.test(av) ? 0.9 : 1;
+      if (am !== 1) { m *= am; why.push(av.split(" (")[0] + " avastha"); }
+      if (c.house[p] === DIG_HOUSE[p]) { m *= 1.4; why.push(`dig bala (strongest direction, house ${DIG_HOUSE[p]})`); }
+      const cb = combustion(c)[p];
+      if (cb && p !== "Moon") { m *= cb.deep ? 0.65 : 0.85; why.push(cb.deep ? "deeply combust" : "combust"); }
+    }
+    if (deg < 1 || deg > 29) { m *= 0.6; why.push(`rashi sandhi (${round(deg, 2)} deg - sign junction)`); }
+    if (SIGN_LORD[c.lagna] === p) { m *= 1.15; why.push("lagna lord"); }
+    m = Math.max(0.3, Math.min(1.6, m));
+    return { mult: round(m, 2), why: why.length ? why.join(", ") : "ordinary condition" };
+  }
+  function addStrength(c, ind) {
+    const ch = {}; for (const r of c.bhavaChalit()) ch[r.planet] = r.chalit_house;
+    for (const i of ind) if (i.planet) {
+      const s = bodyStrength(c, i.planet); i.str = s.mult; i.strength = `x${s.mult} - ${s.why}`;
+      if (ch[i.planet] && !i.d9) i.chalit = `in bhava chalit ${i.planet} shifts to house ${ch[i.planet]} (noted, not used to cut its weight)`;
+    }
+    return ind;
+  }
+  /* Planets acting on a house outrank the sign (x0.6) and are scaled by their condition (bodyStrength).
+     D9 items count x0.5 when the D9 lagna is birth-time sensitive - but a D9 sign that repeats the D1 sign keeps full weight. */
+  function tallyTraits(ind, d9ok = true, d1Sign = -1) {
+    const wOf = i => (WEIGHT[i.weight] || 1) * (i.sign !== undefined ? 0.6 : 1) * (i.str ?? 1)
+      * (i.d9 && !d9ok && !(i.sign !== undefined && i.sign === d1Sign) ? 0.5 : 1);
     const tOf = i => i.planet ? TRAIT_PLANET[i.planet] : TRAIT_SIGN[i.sign];
     const out = {};
+    // the strongest planet acting on the house (occupant/lord/aspect, D1) - classical rule: the strongest influence describes the body
+    const dom = ind.filter(i => i.planet && !i.d9).map(i => ({ i, w: wOf(i) })).sort((x, y) => y.w - x.w)[0];
     for (const k of ["h", "b", "c"]) {
       const votes = ind.map(i => ({ i, t: tOf(i), w: wOf(i) })).filter(x => x.t && x.t[k] !== undefined);
       if (!votes.length) { out[k] = { verdict: "no indication", confidence: "none" }; continue; }
       const wsum = votes.reduce((a, x) => a + x.w, 0), score = votes.reduce((a, x) => a + x.t[k] * x.w, 0) / wsum;
       const idx = score > 0.15 ? 2 : score < -0.15 ? 0 : 1;
       const side = v => v > 0 ? WORDS[k][2] : v < 0 ? WORDS[k][0] : WORDS[k][1];
-      const pro = votes.filter(x => Math.sign(x.t[k]) === Math.sign(idx - 1) && x.t[k] !== 0).map(x => x.i.factor);
-      const con = votes.filter(x => x.t[k] !== 0 && Math.sign(x.t[k]) !== Math.sign(idx - 1)).map(x => `${x.i.factor} (says ${side(x.t[k])})`);
       // do the heaviest indicators disagree? then say so instead of averaging it away
       const top = Math.max(...votes.map(x => x.w)), heavy = votes.filter(x => x.w >= top * 0.99 && x.t[k] !== 0);
       const split = new Set(heavy.map(x => Math.sign(x.t[k]))).size > 1;
-      const conf = split ? "split" : Math.abs(score) > 0.6 ? "clear" : Math.abs(score) > 0.3 ? "leaning" : "slight lean";
-      out[k] = { verdict: WORDS[k][idx], confidence: conf, score: round(score, 2), supported_by: pro, against: con,
+      let conf = split ? "split" : Math.abs(score) > 0.6 ? "clear" : Math.abs(score) > 0.3 ? "leaning" : "slight lean";
+      let vi = idx;
+      const dv = dom && dom.w >= 1.5 && TRAIT_PLANET[dom.i.planet][k];
+      if (dv && (conf === "split" || conf === "slight lean")) {
+        const di = dv > 0 ? 2 : 0;
+        conf = di === idx ? `${conf}, confirmed by the strongest planet (${dom.i.factor})` : `close vote - decided by the strongest planet (${dom.i.factor}, x${dom.i.str})`;
+        vi = di;
+      } else if (dv && Math.sign(dv) !== Math.sign(vi - 1)) {
+        conf = `${conf}, but the strongest planet (${dom.i.factor}, x${dom.i.str}) says ${side(dv)} - give both, this trait is the least certain`;
+      }
+      const pro = votes.filter(x => Math.sign(x.t[k]) === Math.sign(vi - 1) && x.t[k] !== 0).map(x => x.i.factor);
+      const con = votes.filter(x => x.t[k] !== 0 && Math.sign(x.t[k]) !== Math.sign(vi - 1)).map(x => `${x.i.factor} (says ${side(x.t[k])})`);
+      out[k] = { verdict: WORDS[k][vi], confidence: conf, score: round(score, 2), supported_by: pro, against: con,
         split_note: split ? heavy.map(x => `${x.i.factor} says ${side(x.t[k])}`).join("; ") : "" };
+      // build changes with age: lean factors (Saturn, Mars, Sun, Mercury, Ketu, dry signs) show in youth, weight-adding
+      // factors (Moon, Jupiter, Venus, water/earth signs) show more as the person ages. Report both phases when both are substantial.
+      if (k === "b") {
+        const thin = votes.filter(x => x.t.b < 0), heavyB = votes.filter(x => x.t.b > 0);
+        const tw = thin.reduce((a, x) => a + x.w * -x.t.b, 0), hw = heavyB.reduce((a, x) => a + x.w * x.t.b, 0);
+        if (tw && hw && Math.min(tw, hw) >= 0.35 * Math.max(tw, hw)) {
+          out.b.by_age = { young: `lean (${thin.map(x => x.i.factor).join(", ")})`, later: `heavier with age (${heavyB.map(x => x.i.factor).join(", ")})`,
+            note: "Both sides are strong - describe the change over time instead of one word. Classical descriptions are of the person in youth." };
+          out.b.verdict = "lean when young, heavier later"; out.b.confidence = "by age";
+        }
+      }
     }
     const faces = {};
     for (const i of ind) { const t = tOf(i); if (t && t.f) faces[t.f] = (faces[t.f] || 0) + wOf(i); }
     const fe = Object.entries(faces).sort((a, b) => b[1] - a[1]);
     out.face = fe.length ? { verdict: fe[0][0], confidence: fe.length > 1 && fe[1][1] >= fe[0][1] * 0.75 ? `close - runner-up ${fe[1][0]}` : "leaning", votes: faces } : { verdict: "no indication", confidence: "none" };
     return { height: out.h, build: out.b, complexion: out.c, face: out.face,
-      rule: "Always state each trait's verdict (the leading side) with its confidence and the strongest countervote. If confidence is 'split', say plainly that the two strongest indicators disagree and name them - do not average them into one word. Height is relative to the average for the person's sex and region." };
+      rule: "Votes are already scaled by each planet's condition (see indicators[].strength: sandhi, avastha, dignity, dig bala, combustion, lagna lord) - a planet in sandhi/Mrita/enemy sign does not get to out-describe a dig-bala-strong planet. Always state each trait's verdict (the leading side) with its confidence and the strongest countervote. Close votes are already decided by the strongest planet acting on the house (Brihat Jataka / Phaladeepika: the strongest influence describes the body). If confidence is 'split', compare the two indicators' strength and say which one wins and why - never report a coin-flip when one is clearly stronger. If build has by_age, describe youth and later life separately. Height is relative to the average for the person's sex and region." };
   }
   function selfAppearance(c) {
     const ind = [{ factor: `lagna ${SIGNS[c.lagna]}`, sign: c.lagna, weight: "high" },
@@ -453,7 +507,8 @@
       { factor: `Moon sign ${SIGNS[c.moonSign]}`, sign: c.moonSign, weight: "medium" }];
     c.occupants(1).forEach(p => ind.push({ factor: `${p} in lagna`, planet: p, weight: "highest" }));
     c.aspectedBy(1, true).filter(p => !c.occupants(1).includes(p)).forEach(p => ind.push({ factor: `${p} aspects lagna`, planet: p, weight: "medium" }));
-    return { indicators: ind.map(({ factor, weight }) => ({ factor, weight })), traits: tallyTraits(ind),
+    addStrength(c, ind);
+    return { indicators: ind.map(({ factor, weight, strength }) => ({ factor, weight, strength })), traits: tallyTraits(ind),
       use: "Calibration: the same method describes this person. Compare with how they actually look before trusting descriptions of people not yet met." };
   }
   function spouseProfile(c) {
@@ -476,12 +531,20 @@
     const lh = c.house[lord];
     const dir = [1, 4, 7, 10].includes(lh) ? "near (kendra)" : [2, 5, 8, 11].includes(lh) ? "moderate distance" : "far / possibly foreign";
     const margin = d9Margin(c), d9ok = margin >= 15;
-    return { traits: tallyTraits(ind, d9ok),
+    addStrength(c, ind);
+    // ageing signature: Saturn (and Sun for hair) acting strongly on the 7th
+    const ageing = [];
+    const acts = p => occ.includes(p) || asp.includes(p) || lord === p;
+    if (acts("Saturn")) ageing.push(`Saturn acts on the 7th (strength ${bodyStrength(c, "Saturn").mult}): looks older than their age, early greying/thinning hair, bony or worn features; may be older than you`);
+    if (acts("Sun")) ageing.push("Sun acts on the 7th: thinning hair / receding hairline with age");
+    if (acts("Jupiter")) ageing.push("Jupiter acts on the 7th: gains weight around the middle with age");
+    if (acts("Moon") || [3, 7, 11, 1].includes(h7)) ageing.push("Moon / watery-earthy 7th: puffier, softer, heavier as the years pass");
+    return { traits: tallyTraits(ind, d9ok, h7), ageing,
       d9_reliability: d9ok ? `D9 lagna holds for about ${margin} minutes either way - D9 indicators used at full weight.`
         : `D9 lagna changes if the birth time is off by about ${margin} minutes - D9 indicators were down-weighted; rely on D1.`,
-      indicators: ind.map(({ planet, sign, d9, ...r }) => r), marks, distance_of_spouse_origin: `7th lord in house ${lh}: ${dir} (popular rule)`,
+      indicators: ind.map(({ planet, sign, d9, str, ...r }) => r), marks, distance_of_spouse_origin: `7th lord in house ${lh}: ${dir} (popular rule)`,
       darakaraka_note: "See jaimini.chara_karakas for Darakaraka; its sign/nakshatra add to the description",
-      method: "Use traits (weighted vote per height/build/complexion/face) as the description; indicators are the evidence. Planets IN the 7th weigh most, then 7th lord and D9 7th, then aspects and karaka. If D9 is birth-time sensitive, rely on D1 indicators only." };
+      method: "Use traits (weighted vote per height/build/complexion/face) as the description; indicators are the evidence. Planets IN the 7th weigh most, then 7th lord and D9 7th, then aspects and karaka. Each planet's vote is scaled by its condition (indicators[].strength). If D9 is birth-time sensitive, D9 counts half - unless the D9 7th sign repeats the D1 7th sign. Describe the person at the age the user knows them: use build.by_age and ageing for anyone past ~35." };
   }
   function childrenProfile(c) {
     const h5 = (c.lagna + 4) % 12, lord = SIGN_LORD[h5], occ = c.occupants(5);
