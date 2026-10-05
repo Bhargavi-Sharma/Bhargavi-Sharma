@@ -406,10 +406,12 @@
     Mercury: { h: 0, b: -1, c: -0.5 }, Jupiter: { b: 1, c: 1, f: "round" }, Venus: { h: 0, b: 0, c: 0.5, f: "oval" },
     Saturn: { h: 1, b: -1, c: -1, f: "long" }, Rahu: { h: 1, b: -0.5, c: -1 }, Ketu: { b: -1, c: -1 },
   };
+  /* Sign heights follow the classical hrasva / sama / dirgha classes (BPHS rashi chapter, Phaladeepika ch.1):
+     short - Aries, Taurus, Aquarius, Pisces; medium - Gemini, Cancer, Sagittarius, Capricorn; long - Leo, Virgo, Libra, Scorpio. */
   const TRAIT_SIGN = [
-    { h: 0, b: -1, f: "long" }, { h: -0.5, b: 1, c: 1, f: "broad" }, { h: 1, b: -1 }, { h: -1, b: 1, c: 1, f: "round" },
-    { h: 0.5, b: 1, f: "broad" }, { h: 0, b: -1, c: 0.5 }, { h: 0.5, b: 0, c: 1, f: "oval" }, { h: 0, b: 0.5, c: 0 },
-    { h: 1, b: 0.5, c: 0, f: "long" }, { h: 0, b: -1, c: -1, f: "long" }, { h: 1, b: 0, c: -0.5 }, { h: -1, b: 1, c: 1, f: "round" },
+    { h: -1, b: -1, f: "long" }, { h: -1, b: 1, c: 1, f: "broad" }, { h: 0, b: -1 }, { h: 0, b: 1, c: 1, f: "round" },
+    { h: 1, b: 1, f: "broad" }, { h: 1, b: -1, c: 0.5 }, { h: 1, b: 0, c: 1, f: "oval" }, { h: 1, b: 0.5, c: 0 },
+    { h: 0, b: 0.5, c: 0, f: "long" }, { h: 0, b: -1, c: -1, f: "long" }, { h: -1, b: 0, c: -0.5 }, { h: -1, b: 1, c: 1, f: "round" },
   ];
   const WEIGHT = { highest: 3, high: 2, medium: 1 };
   const WORDS = { h: ["shorter than average", "average height", "taller than average"], b: ["thin / lean", "medium build", "heavy / well-built"],
@@ -453,14 +455,16 @@
   /* Planets acting on a house outrank the sign (x0.6) and are scaled by their condition (bodyStrength).
      D9 items count x0.5 when the D9 lagna is birth-time sensitive - but a D9 sign that repeats the D1 sign keeps full weight. */
   function tallyTraits(ind, d9ok = true, d1Sign = -1) {
-    const wOf = i => (WEIGHT[i.weight] || 1) * (i.sign !== undefined ? 0.6 : 1) * (i.str ?? 1)
+    const LEAD = { h: { sign: 1.2, planet: 0.5 }, c: { sign: 0.4, planet: 1 } };
+    const wOf = (i, k) => (WEIGHT[i.weight] || 1) * (i.sign !== undefined ? 0.6 * (LEAD[k]?.sign ?? 1) : (LEAD[k]?.planet ?? 1)) * (i.str ?? 1)
       * (i.d9 && !d9ok && !(i.sign !== undefined && i.sign === d1Sign) ? 0.5 : 1);
     const tOf = i => i.planet ? TRAIT_PLANET[i.planet] : TRAIT_SIGN[i.sign];
     const out = {};
     // the strongest planet acting on the house (occupant/lord/aspect, D1) - classical rule: the strongest influence describes the body
     const dom = ind.filter(i => i.planet && !i.d9).map(i => ({ i, w: wOf(i) })).sort((x, y) => y.w - x.w)[0];
+    const domFor = k => k === "h" ? null : dom;  // height is judged by sign class first; one planet does not override agreeing signs
     for (const k of ["h", "b", "c"]) {
-      const votes = ind.map(i => ({ i, t: tOf(i), w: wOf(i) })).filter(x => x.t && x.t[k] !== undefined);
+      const votes = ind.map(i => ({ i, t: tOf(i), w: wOf(i, k) })).filter(x => x.t && x.t[k] !== undefined);
       if (!votes.length) { out[k] = { verdict: "no indication", confidence: "none" }; continue; }
       const wsum = votes.reduce((a, x) => a + x.w, 0), score = votes.reduce((a, x) => a + x.t[k] * x.w, 0) / wsum;
       const idx = score > 0.15 ? 2 : score < -0.15 ? 0 : 1;
@@ -470,17 +474,18 @@
       const split = new Set(heavy.map(x => Math.sign(x.t[k]))).size > 1;
       let conf = split ? "split" : Math.abs(score) > 0.6 ? "clear" : Math.abs(score) > 0.3 ? "leaning" : "slight lean";
       let vi = idx;
-      const dv = dom && dom.w >= 1.5 && TRAIT_PLANET[dom.i.planet][k];
+      const dm = domFor(k), dv = dm && dm.w >= 1.5 && TRAIT_PLANET[dm.i.planet][k];
       if (dv && (conf === "split" || conf === "slight lean")) {
         const di = dv > 0 ? 2 : 0;
-        conf = di === idx ? `${conf}, confirmed by the strongest planet (${dom.i.factor})` : `close vote - decided by the strongest planet (${dom.i.factor}, x${dom.i.str})`;
+        conf = di === idx ? `${conf}, confirmed by the strongest planet (${dm.i.factor})` : `close vote - decided by the strongest planet (${dm.i.factor}, x${dm.i.str})`;
         vi = di;
       } else if (dv && Math.sign(dv) !== Math.sign(vi - 1)) {
-        conf = `${conf}, but the strongest planet (${dom.i.factor}, x${dom.i.str}) says ${side(dv)} - give both, this trait is the least certain`;
+        conf = `${conf}, but the strongest planet (${dm.i.factor}, x${dm.i.str}) says ${side(dv)} - give both, this trait is the least certain`;
       }
       const pro = votes.filter(x => Math.sign(x.t[k]) === Math.sign(vi - 1) && x.t[k] !== 0).map(x => x.i.factor);
       const con = votes.filter(x => x.t[k] !== 0 && Math.sign(x.t[k]) !== Math.sign(vi - 1)).map(x => `${x.i.factor} (says ${side(x.t[k])})`);
-      out[k] = { verdict: WORDS[k][vi], confidence: conf, score: round(score, 2), supported_by: pro, against: con,
+      const word = conf === "slight lean" && vi !== 1 ? `${WORDS[k][1]} (slightly toward ${WORDS[k][vi]})` : WORDS[k][vi];
+      out[k] = { verdict: word, confidence: conf, score: round(score, 2), supported_by: pro, against: con,
         split_note: split ? heavy.map(x => `${x.i.factor} says ${side(x.t[k])}`).join("; ") : "" };
       // build changes with age: lean factors (Saturn, Mars, Sun, Mercury, Ketu, dry signs) show in youth, weight-adding
       // factors (Moon, Jupiter, Venus, water/earth signs) show more as the person ages. Report both phases when both are substantial.
@@ -499,7 +504,7 @@
     const fe = Object.entries(faces).sort((a, b) => b[1] - a[1]);
     out.face = fe.length ? { verdict: fe[0][0], confidence: fe.length > 1 && fe[1][1] >= fe[0][1] * 0.75 ? `close - runner-up ${fe[1][0]}` : "leaning", votes: faces } : { verdict: "no indication", confidence: "none" };
     return { height: out.h, build: out.b, complexion: out.c, face: out.face,
-      rule: "Votes are already scaled by each planet's condition (see indicators[].strength: sandhi, avastha, dignity, dig bala, combustion, lagna lord) - a planet in sandhi/Mrita/enemy sign does not get to out-describe a dig-bala-strong planet. Always state each trait's verdict (the leading side) with its confidence and the strongest countervote. Close votes are already decided by the strongest planet acting on the house (Brihat Jataka / Phaladeepika: the strongest influence describes the body). If confidence is 'split', compare the two indicators' strength and say which one wins and why - never report a coin-flip when one is clearly stronger. If build has by_age, describe youth and later life separately. Height is relative to the average for the person's sex and region." };
+      rule: "Votes are already scaled by each planet's condition (see indicators[].strength: sandhi, avastha, dignity, dig bala, combustion, lagna lord) - a planet in sandhi/Mrita/enemy sign does not get to out-describe a dig-bala-strong planet. Always state each trait's verdict (the leading side) with its confidence and the strongest countervote. Height is sign-led (classical hrasva/sama/dirgha sign classes; planets count half) and complexion is planet-led (graha varna; signs count less). Close complexion/build votes are decided by the strongest planet acting on the house (Brihat Jataka / Phaladeepika: the strongest influence describes the body). If confidence is 'split', compare the two indicators' strength and say which one wins and why - never report a coin-flip when one is clearly stronger. If build has by_age, describe youth and later life separately. Height is relative to the average for the person's sex and region." };
   }
   function selfAppearance(c) {
     const ind = [{ factor: `lagna ${SIGNS[c.lagna]}`, sign: c.lagna, weight: "high" },
@@ -562,7 +567,9 @@
     sex.push(`D7 5th sign ${SIGNS[d7_5]}: ${MALE_SIGNS.includes(d7_5) ? "male" : "female"}`);
     const nav = Math.floor((c.lon[lord] % 30) / (30 / 9)) + 1;
     return { fifth_house: SIGNS[h5], fifth_lord: lord, occupants: occ, d7_lagna: SIGNS[d7l], d7_fifth: SIGNS[d7_5],
-      d7_fifth_occupants: PLANETS.filter(p => c.vargas[7][p] === d7_5), gender_indicators: sex, pregnancy_obstacle_indicators: loss,
+      d7_fifth_occupants: PLANETS.filter(p => c.vargas[7][p] === d7_5), gender_indicators: sex,
+      gender_reliability: "Low. Classical sex-of-child rules have no demonstrated accuracy above chance (about 50/50). Never state a child's sex as a prediction or as confirmed; if asked, give the classical lean and say it is a coin-flip-level call.",
+      pregnancy_obstacle_indicators: loss,
       count_indicators: [`5th lord ${lord} has crossed ${nav} navamsha(s) in its sign - an old rule gives the count of children by navamshas (Phaladeepika ch.12); treat as a rough indicator only`],
       method: "Order of children: 5th house = 1st child, 7th = 2nd, 9th = 3rd (each 3rd from previous) - judge each with its lord; time each with dasha of those significators + Jupiter transit." };
   }

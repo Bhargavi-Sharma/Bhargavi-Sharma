@@ -124,7 +124,7 @@
     if (spec.adverse) verdict = score >= 0 ? `${verdict} protection` : `${verdict} protection - vulnerable area`;
     return { area: spec.label, house: h, lord, karaka: kar, favourable: plus, unfavourable: minus, score, verdict };
   }
-  function eventWindows(c, area, startMs, endMs, top = 8) {
+  function eventWindows(c, area, startMs, endMs, top = 8, rawOnly = false) {
     const spec = AREAS[area], main = spec.main, sig = significators(c, spec.houses), mainSig = significators(c, [main]);
     const kar = karakaOf(c, spec), v = vimshottari(c.lon.Moon, c.utc.getTime(), c.settings.dasha_year);
     const lord = c.lordOfHouse(main), lordSign = c.sign[lord], mainSign = (c.lagna + main - 1) % 12;
@@ -153,6 +153,7 @@
         windows.push({ start: t, md: per.md, ad: per.ad, score: round(score, 1), factors, double_transit: dtHouse || dtLord });
       }
     }
+    if (rawOnly) return windows;
     const merged = [];
     for (const w of windows) {
       const last = merged[merged.length - 1];
@@ -167,6 +168,37 @@
     for (const r of ranked) { r.start = fmtYm(r.start); r.end = fmtYm(r.end); r.peak = fmtYm(r.peak); }
     return { area: spec.label, significators: sig, karaka: kar, windows: ranked,
       method: "score = dasha significance (MD+AD) + Jupiter/Saturn double transit on house and lord + Jupiter transit + ashtakavarga. A window is 'high' only when dasha AND double transit agree." };
+  }
+  const MIN_AGE = { father: 0, mother: 0, siblings: 0, health: 0, accidents_surgery: 0, mind: 0, love: 15, marriage: 18, children: 20, career: 18, govt_authority: 18, wealth: 18, property: 20, foreign: 17 };
+  /* Back-test the timing method on events the person has already lived through. For each event, where does the
+     month it happened rank among all months of that area's scan (age MIN_AGE to 60)? A method with real signal puts
+     true events near the top; chance puts them around the 50th percentile. Also: was it inside a named (top-8) window? */
+  function backtest(c, events) {
+    const birthMs = c.utc.getTime(), out = [];
+    for (const ev of events) {
+      if (!AREAS[ev.area]) { out.push({ ...ev, error: `unknown area - use one of ${Object.keys(AREAS).join(", ")}` }); continue; }
+      const when = Date.parse(String(ev.date).slice(0, 7) + "-15T00:00:00Z");
+      if (isNaN(when)) { out.push({ ...ev, error: "date must be YYYY-MM or YYYY-MM-DD" }); continue; }
+      const st = birthMs + 365.25 * (MIN_AGE[ev.area] ?? 16) * DAY, en = birthMs + 365.25 * 60 * DAY;
+      const raw = eventWindows(c, ev.area, st, en, 0, true), n = Math.round((en - st) / (30 * DAY));
+      const hit = raw.find(w => when >= w.start && when < w.start + 30 * DAY), sc = hit ? hit.score : 0;
+      const below = raw.filter(w => w.score < sc).length + (n - raw.length) * (sc > 0 ? 1 : 0);
+      const ties = raw.filter(w => w.score === sc).length + (sc === 0 ? n - raw.length : 0);
+      const pct = Math.round(100 * (below + 0.5 * ties) / n);
+      const named = eventWindows(c, ev.area, st, en).windows;
+      const ms = ym => Date.parse(ym + "-01T00:00:00Z");
+      const inNamed = named.some(w => when >= ms(w.start) - 31 * DAY && when <= ms(w.end) + 31 * DAY);
+      const near = named.map(w => ({ w, d: when < ms(w.start) ? ms(w.start) - when : when > ms(w.end) ? when - ms(w.end) : 0 })).sort((a, b) => a.d - b.d)[0];
+      out.push({ area: ev.area, date: ev.date, month_score: sc, percentile: pct, in_named_window: inNamed,
+        nearest_named_window: near ? `${near.w.start} to ${near.w.end} (${Math.round(near.d / (30 * DAY))} months away)` : "none" });
+    }
+    const ok = out.filter(x => x.percentile !== undefined);
+    const mean = ok.length ? Math.round(ok.reduce((a, x) => a + x.percentile, 0) / ok.length) : null, hits = ok.filter(x => x.in_named_window).length;
+    const verdict = !ok.length ? "no usable events" : ok.length < 3 ? "too few events to judge the method - say so"
+      : mean >= 80 && hits >= ok.length / 2 ? "the method tracked this person's past well - dated predictions can be given at the stated confidence"
+      : mean >= 65 ? "weak signal - give dated predictions as broad periods only, and say how the past scored"
+      : "no better than chance on this person's own past - do not present any date as likely; give windows only as 'the method's picks', with this score";
+    return { events: out, mean_percentile: mean, named_window_hits: `${hits}/${ok.length}`, chance_level: "50th percentile, and about 15-25% of events inside a named window by luck", verdict };
   }
   function marakaPeriods(c, startMs, endMs) {
     const primary = new Set([c.lordOfHouse(2), c.lordOfHouse(7), ...c.occupants(2), ...c.occupants(7)]);
@@ -212,6 +244,9 @@
       limits: "Rectification can only narrow the time using known life events; with an uncertain time, D9 within a few minutes and D60 within seconds are unreliable, and so are judgements that rest on them." };
   }
   function rectifyByEvents(birth, settings, events, minutes = 60, step = 2) {
+    const usable = events.filter(e => AREAS[e.area] && !isNaN(Date.parse(String(e.date).slice(0, 10))));
+    if (usable.length < 4) return [{ insufficient: true, events_given: usable.length,
+      note: "Fewer than 4 dated events - any preference for an earlier/later time would be noise. Do not state a direction; ask for more dated events (marriage, children's births, job changes, moves, surgeries, parents' events)." }];
     const res = [];
     for (let m = -minutes; m <= minutes; m += step) {
       const b = shiftBirth(birth, m), c = new J.Chart(b, settings);
@@ -230,7 +265,11 @@
       res.push({ offset_minutes: m, time: `${String(b.h).padStart(2, "0")}:${String(b.mi).padStart(2, "0")}`, lagna: SIGNS[c.lagna],
         d9_lagna: SIGNS[c.vargas[9].Lagna], score, detail });
     }
-    return res.sort((a, b) => b.score - a.score || Math.abs(a.offset_minutes) - Math.abs(b.offset_minutes)).slice(0, 10);
+    res.sort((a, b) => b.score - a.score || Math.abs(a.offset_minutes) - Math.abs(b.offset_minutes));
+    const best = res[0].score, flat = res.filter(r => r.score === best).length;
+    if (flat >= 5 || best - res[Math.min(9, res.length - 1)].score <= 1)
+      res[0].warning = `flat result: ${flat} offsets tie for the top score - the events do not single out a birth time; say so and do not state a direction`;
+    return res.slice(0, 10);
   }
 
   // ---------------------------------------------------------------- dossier
@@ -248,7 +287,6 @@
     const winStart = birthMs + 365.25 * 16 * DAY, winEnd = nowMs + 365.25 * 30 * DAY, nowYm = fmtYm(nowMs);
     const ageAt = ym => { const [y, m] = ym.split("-").map(Number); return round(y + (m - 1) / 12 - (birth.y + (birth.mo - 1) / 12), 1); };
     const areas = {};
-    const MIN_AGE = { father: 0, mother: 0, siblings: 0, health: 0, accidents_surgery: 0, mind: 0, love: 15, marriage: 18, children: 20, career: 18, govt_authority: 18, wealth: 18, property: 20, foreign: 17 };
     for (const area of Object.keys(AREAS)) {
       const st = birthMs + 365.25 * (MIN_AGE[area] ?? 16) * DAY;
       const pr = promise(c, area, av, cond), ew = eventWindows(c, area, st, winEnd);
@@ -301,6 +339,6 @@
   }
 
   Object.assign(J, { GOCHAR, AREAS, transitReport, sadeSatiPeriods, significators, promise, eventWindows, marakaPeriods,
-    sensitivity, rectifyByEvents, buildDossier, shiftBirth });
+    sensitivity, rectifyByEvents, buildDossier, shiftBirth, backtest, MIN_AGE });
   if (typeof module !== "undefined") module.exports = J;
 })(typeof window !== "undefined" ? window : globalThis);
