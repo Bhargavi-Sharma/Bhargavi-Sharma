@@ -397,18 +397,74 @@
   const BODY = { 1: "head/forehead", 2: "face", 3: "neck/arms", 4: "chest", 5: "stomach", 6: "waist/abdomen", 7: "lower abdomen",
     8: "private parts", 9: "thighs", 10: "knees", 11: "calves", 12: "feet" };
   const MALE_SIGNS = [0, 2, 4, 6, 8, 10];
+  /* Structured physical traits per planet and sign (BPHS ch.3 graha svarupa; Saravali / Brihat Jataka rising-sign
+     descriptions), so indicators can be counted per trait instead of picked from free text.
+     h = height (-1 short, 0 medium, +1 tall), b = build (-1 thin, 0 medium, +1 heavy),
+     c = complexion (-1 dark, 0 wheatish, +1 fair), f = face shape. A missing key means the source is silent. */
+  const TRAIT_PLANET = {
+    Sun: { h: 0, b: 0, c: -0.5, f: "square" }, Moon: { h: 0, b: 1, c: 1, f: "round" }, Mars: { h: -0.5, b: -1, c: 0, f: "sharp" },
+    Mercury: { h: 0, b: -1, c: -0.5 }, Jupiter: { b: 1, c: 1, f: "round" }, Venus: { h: 0, b: 0, c: 0.5, f: "oval" },
+    Saturn: { h: 1, b: -1, c: -1, f: "long" }, Rahu: { h: 1, b: -0.5, c: -1 }, Ketu: { b: -1, c: -1 },
+  };
+  const TRAIT_SIGN = [
+    { h: 0, b: -1, f: "long" }, { h: -0.5, b: 1, c: 1, f: "broad" }, { h: 1, b: -1 }, { h: -1, b: 1, c: 1, f: "round" },
+    { h: 0.5, b: 1, f: "broad" }, { h: 0, b: -1, c: 0.5 }, { h: 0.5, b: 0, c: 1, f: "oval" }, { h: 0, b: 0.5, c: 0 },
+    { h: 1, b: 0.5, c: 0, f: "long" }, { h: 0, b: -1, c: -1, f: "long" }, { h: 1, b: 0, c: -0.5 }, { h: -1, b: 1, c: 1, f: "round" },
+  ];
+  const WEIGHT = { highest: 3, high: 2, medium: 1 };
+  const WORDS = { h: ["shorter than average", "average height", "taller than average"], b: ["thin / lean", "medium build", "heavy / well-built"],
+    c: ["darker / dusky", "wheatish", "fair"] };
+  /* Count weighted votes per trait. Each indicator carries {planet} or {sign} and a weight. */
+  /* Minutes the birth time can move before the D9 lagna changes (ascendant moves ~1 degree per 4 minutes). */
+  function d9Margin(c) {
+    const span = 30 / 9, off = c.asc % span;
+    return Math.round(Math.min(off, span - off) * 4);
+  }
+  /* Planets acting on a house outrank the sign (x0.6); D9 items count x0.3 when the D9 lagna is birth-time sensitive. */
+  function tallyTraits(ind, d9ok = true) {
+    const out = {};
+    for (const k of ["h", "b", "c"]) {
+      let sum = 0, wsum = 0; const pro = [], con = [];
+      for (const i of ind) {
+        const t = i.planet ? TRAIT_PLANET[i.planet] : TRAIT_SIGN[i.sign];
+        if (!t || t[k] === undefined) continue;
+        const w = (WEIGHT[i.weight] || 1) * (i.sign !== undefined ? 0.6 : 1) * (i.d9 && !d9ok ? 0.3 : 1);
+        sum += t[k] * w; wsum += w;
+        (t[k] > 0 ? pro : t[k] < 0 ? con : []).push(i.factor);
+      }
+      if (!wsum) { out[k] = { verdict: "no indication", confidence: "none" }; continue; }
+      const score = sum / wsum, idx = score > 0.25 ? 2 : score < -0.25 ? 0 : 1;
+      const conf = Math.abs(score) > 0.6 ? "clear" : Math.abs(score) > 0.25 ? "leaning" : "mixed / unclear";
+      out[k] = { verdict: WORDS[k][idx], confidence: conf, score: round(score, 2), pointing_up: pro, pointing_down: con };
+    }
+    const faces = {};
+    for (const i of ind) { const t = i.planet ? TRAIT_PLANET[i.planet] : TRAIT_SIGN[i.sign]; if (t && t.f) faces[t.f] = (faces[t.f] || 0) + (WEIGHT[i.weight] || 1) * (i.sign !== undefined ? 0.6 : 1) * (i.d9 && !d9ok ? 0.3 : 1); }
+    const fe = Object.entries(faces).sort((a, b) => b[1] - a[1]);
+    out.face = fe.length ? { verdict: fe[0][0], confidence: fe.length > 1 && fe[1][1] >= fe[0][1] * 0.75 ? "mixed / unclear" : "leaning", votes: faces } : { verdict: "no indication", confidence: "none" };
+    return { height: out.h, build: out.b, complexion: out.c, face: out.face,
+      rule: "Lead with each trait's verdict. Say 'unclear' when confidence is mixed. Height is relative to the average for the person's sex and region. Never lead with a trait that lost the vote." };
+  }
+  function selfAppearance(c) {
+    const ind = [{ factor: `lagna ${SIGNS[c.lagna]}`, sign: c.lagna, weight: "high" },
+      { factor: `lagna lord ${SIGN_LORD[c.lagna]}`, planet: SIGN_LORD[c.lagna], weight: "high" },
+      { factor: `Moon sign ${SIGNS[c.moonSign]}`, sign: c.moonSign, weight: "medium" }];
+    c.occupants(1).forEach(p => ind.push({ factor: `${p} in lagna`, planet: p, weight: "highest" }));
+    c.aspectedBy(1, true).filter(p => !c.occupants(1).includes(p)).forEach(p => ind.push({ factor: `${p} aspects lagna`, planet: p, weight: "medium" }));
+    return { indicators: ind.map(({ factor, weight }) => ({ factor, weight })), traits: tallyTraits(ind),
+      use: "Calibration: the same method describes this person. Compare with how they actually look before trusting descriptions of people not yet met." };
+  }
   function spouseProfile(c) {
     const h7 = (c.lagna + 6) % 12, lord = SIGN_LORD[h7], occ = c.occupants(7);
     const asp = c.aspectedBy(7, true).filter(p => !occ.includes(p));
     const karaka = c.birth.gender === "F" ? "Jupiter" : "Venus";
     const d9_7 = (c.vargas[9].Lagna + 6) % 12, d9occ = PLANETS.filter(p => c.vargas[9][p] === d9_7);
-    const ind = [{ factor: `7th sign ${SIGNS[h7]}`, suggests: SIGN_LOOKS[h7], weight: "high" },
-      { factor: `7th lord ${lord} in ${SIGNS[c.sign[lord]]} (house ${c.house[lord]})`, suggests: PLANET_LOOKS[lord], weight: "high" }];
-    occ.forEach(p => ind.push({ factor: `${p} in 7th`, suggests: PLANET_LOOKS[p], weight: "highest" }));
-    asp.forEach(p => ind.push({ factor: `${p} aspects 7th`, suggests: PLANET_LOOKS[p], weight: "medium" }));
-    ind.push({ factor: `D9 7th sign ${SIGNS[d9_7]}`, suggests: SIGN_LOOKS[d9_7], weight: "high" });
-    d9occ.forEach(p => ind.push({ factor: `${p} in D9 7th`, suggests: PLANET_LOOKS[p], weight: "high" }));
-    ind.push({ factor: `karaka ${karaka} in ${SIGNS[c.sign[karaka]]}`, suggests: PLANET_LOOKS[karaka], weight: "medium" });
+    const ind = [{ factor: `7th sign ${SIGNS[h7]}`, suggests: SIGN_LOOKS[h7], weight: "high", sign: h7 },
+      { factor: `7th lord ${lord} in ${SIGNS[c.sign[lord]]} (house ${c.house[lord]})`, suggests: PLANET_LOOKS[lord], weight: "high", planet: lord }];
+    occ.forEach(p => ind.push({ factor: `${p} in 7th`, suggests: PLANET_LOOKS[p], weight: "highest", planet: p }));
+    asp.forEach(p => ind.push({ factor: `${p} aspects 7th`, suggests: PLANET_LOOKS[p], weight: "medium", planet: p }));
+    ind.push({ factor: `D9 7th sign ${SIGNS[d9_7]}`, suggests: SIGN_LOOKS[d9_7], weight: "high", sign: d9_7, d9: true });
+    d9occ.forEach(p => ind.push({ factor: `${p} in D9 7th`, suggests: PLANET_LOOKS[p], weight: "high", planet: p, d9: true }));
+    ind.push({ factor: `karaka ${karaka} in ${SIGNS[c.sign[karaka]]}`, suggests: PLANET_LOOKS[karaka], weight: "medium", planet: karaka });
     const marks = [];
     for (const p of ["Mars", "Saturn", "Ketu", "Rahu"]) if (occ.includes(p) || asp.includes(p)) {
       const hf = houseFrom(h7, c.sign[p]);
@@ -416,9 +472,13 @@
     }
     const lh = c.house[lord];
     const dir = [1, 4, 7, 10].includes(lh) ? "near (kendra)" : [2, 5, 8, 11].includes(lh) ? "moderate distance" : "far / possibly foreign";
-    return { indicators: ind, marks, distance_of_spouse_origin: `7th lord in house ${lh}: ${dir} (popular rule)`,
+    const margin = d9Margin(c), d9ok = margin >= 15;
+    return { traits: tallyTraits(ind, d9ok),
+      d9_reliability: d9ok ? `D9 lagna holds for about ${margin} minutes either way - D9 indicators used at full weight.`
+        : `D9 lagna changes if the birth time is off by about ${margin} minutes - D9 indicators were down-weighted; rely on D1.`,
+      indicators: ind.map(({ planet, sign, d9, ...r }) => r), marks, distance_of_spouse_origin: `7th lord in house ${lh}: ${dir} (popular rule)`,
       darakaraka_note: "See jaimini.chara_karakas for Darakaraka; its sign/nakshatra add to the description",
-      method: "Describe by combining: planets IN the 7th (strongest) > 7th lord > D9 7th > aspects > karaka. Where indicators conflict, say so." };
+      method: "Use traits (weighted vote per height/build/complexion/face) as the description; indicators are the evidence. Planets IN the 7th weigh most, then 7th lord and D9 7th, then aspects and karaka. If D9 is birth-time sensitive, rely on D1 indicators only." };
   }
   function childrenProfile(c) {
     const h5 = (c.lagna + 4) % 12, lord = SIGN_LORD[h5], occ = c.occupants(5);
@@ -477,7 +537,7 @@
     return { stressors: m, stabilisers: good, moon_nakshatra: nakshatraOf(c.lon.Moon).name, fourth_lord: c.lordOfHouse(4),
       fourth_lord_house: c.house[c.lordOfHouse(4)] };
   }
-  const profiles = c => ({ spouse: spouseProfile(c), children: childrenProfile(c), career: careerProfile(c), mind: mindProfile(c) });
+  const profiles = c => ({ self_appearance: selfAppearance(c), spouse: spouseProfile(c), children: childrenProfile(c), career: careerProfile(c), mind: mindProfile(c) });
 
   // ---------------------------------------------------------------- remedies
   const GEMS = {
@@ -605,6 +665,6 @@
     ] };
   }
 
-  Object.assign(J, { yogas, doshas, jaimini, profiles, gemAdvice, mantraDaan, lalKitab, pyNums });
+  Object.assign(J, { tallyTraits, yogas, doshas, jaimini, profiles, gemAdvice, mantraDaan, lalKitab, pyNums });
   if (typeof module !== "undefined") module.exports = J;
 })(typeof window !== "undefined" ? window : globalThis);

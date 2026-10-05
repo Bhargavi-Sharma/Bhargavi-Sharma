@@ -149,6 +149,7 @@
       current_dasha: R.vimshottari.current, life_chapters: R.life_chapters.map(c => ({ mahadasha: c.mahadasha, from: c.from, to: c.to, tone: c.tone, switches_on: c.switches_on })),
       timeline: R.timeline.map(t => ({ from: t.from, to: t.to, dasha: t.dasha, areas: t.areas_switched_on })),
       upcoming_5y: R.upcoming_5y, area_verdicts: Object.fromEntries(Object.entries(R.life_areas).map(([k, a]) => [k, a.promise.verdict])),
+      appearance_check: R.profiles.self_appearance.traits,
       birth_time_sensitivity: Object.fromEntries(Object.entries(R.birth_time_sensitivity.points).map(([k, v]) => [k, `${v.value}: ${v.reliability}`])),
     };
     if (rel) out.cross_check = {
