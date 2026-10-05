@@ -38,3 +38,12 @@ Rodden XX. Event ages from the texts, scored by year. Rama 68 (7 events, but 3 a
 age 25), Krishna 39. Both dates were reconstructed from the same texts the events come from, and the
 ephemeris is not reliable 5,000-7,000 years back, so this cannot test anything. Sita and Ravana have no
 proposed birth data in Astro-Databank.
+
+## Round 3 - physical features and temperament (pre-registered, PREREG.md tests 3-4)
+- Height (m) and weight (kg) from "Traits : Body : Size/Weight" notes, AA/A/B, standardised within sex and birth
+  decade. Engine's self_appearance height score vs height: r = +0.009 (n 2,275, CI -0.032..+0.050). Build score vs
+  BMI: r = -0.005 (n 1,302). Exploration of 34 single classical features on half A: none reached p<0.05, so nothing
+  was carried to the confirmation half. (`body_results.txt`)
+- Temperament (assertive vs reserved trait categories, n 340 / 169): Mars on lagna, fire lagna, fire Moon, strong
+  Mars - no difference beyond chance. (`temper_results.txt`)
+- Complexion could not be tested: the database has no complexion data.

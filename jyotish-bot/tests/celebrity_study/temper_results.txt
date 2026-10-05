@@ -1,0 +1,4 @@
+mars_on_lagna  assertive 42.6% (n=340)  reserved 42.6% (n=169)  diff 0.0 ±9.1
+fire_lagna     assertive 26.5% (n=340)  reserved 21.9% (n=169)  diff 4.6 ±7.8
+fire_moon      assertive 20.9% (n=340)  reserved 28.4% (n=169)  diff -7.5 ±8.1
+strong_mars    assertive 40.0% (n=340)  reserved 40.8% (n=169)  diff -0.8 ±9.1
