@@ -53,7 +53,49 @@
       .sort((a, b) => b[1] - a[1]).map(([k]) => k);
   }
 
-  function insight(D, c, nowMs = Date.now()) {
+  /* Avakahada chakra and birth panchang - the standard tables used for kundali milan (Ashtakoota) and naming.
+   Yoni/gana/nadi by Moon's nakshatra; varna/vashya/tatva by Moon's sign; naam akshar by nakshatra pada. */
+const YONI = [["Ashwa (horse)", "M"], ["Gaja (elephant)", "M"], ["Mesha (sheep)", "F"], ["Sarpa (serpent)", "M"], ["Sarpa (serpent)", "F"],
+  ["Shvana (dog)", "F"], ["Marjara (cat)", "F"], ["Mesha (sheep)", "M"], ["Marjara (cat)", "M"], ["Mushaka (rat)", "M"], ["Mushaka (rat)", "F"],
+  ["Gau (cow)", "M"], ["Mahisha (buffalo)", "F"], ["Vyaghra (tiger)", "F"], ["Mahisha (buffalo)", "M"], ["Vyaghra (tiger)", "M"],
+  ["Mriga (deer)", "F"], ["Mriga (deer)", "M"], ["Shvana (dog)", "M"], ["Vanara (monkey)", "M"], ["Nakula (mongoose)", "M"],
+  ["Vanara (monkey)", "F"], ["Simha (lion)", "F"], ["Ashwa (horse)", "F"], ["Simha (lion)", "M"], ["Gau (cow)", "F"], ["Gaja (elephant)", "F"]];
+const YONI_ENEMY = { Ashwa: "Mahisha", Mahisha: "Ashwa", Gaja: "Simha", Simha: "Gaja", Mesha: "Vanara", Vanara: "Mesha", Sarpa: "Nakula", Nakula: "Sarpa",
+  Shvana: "Mriga", Mriga: "Shvana", Marjara: "Mushaka", Mushaka: "Marjara", Gau: "Vyaghra", Vyaghra: "Gau" };
+const NADI = "AMPPMAAMPPMAAMPPMAAMPPMAAMP".split("").map(x => ({ A: "Adi (Vata)", M: "Madhya (Pitta)", P: "Antya (Kapha)" })[x]);
+const AKSHAR = ["Chu Che Cho La", "Li Lu Le Lo", "A I U E", "O Va Vi Vu", "Ve Vo Ka Ki", "Ku Gha Nga Chha", "Ke Ko Ha Hi", "Hu He Ho Da",
+  "Di Du De Do", "Ma Mi Mu Me", "Mo Ta Ti Tu", "Te To Pa Pi", "Pu Sha Na Tha", "Pe Po Ra Ri", "Ru Re Ro Ta", "Ti Tu Te To", "Na Ni Nu Ne",
+  "No Ya Yi Yu", "Ye Yo Bha Bhi", "Bhu Dha Pha Dha", "Bhe Bho Ja Ji", "Khi/Ju Khu/Je Khe/Jo Kho/Gha", "Ga Gi Gu Ge", "Go Sa Si Su",
+  "Se So Da Di", "Du Tha Jha Na", "De Do Cha Chi"].map(x => x.split(" "));
+const VARNA = ["Kshatriya", "Vaishya", "Shudra", "Brahmin"];  // by element of the Moon sign: fire, earth, air, water
+const TATVA = ["Agni (fire)", "Prithvi (earth)", "Vayu (air)", "Jala (water)"];
+const YOGA_NAMES = ["Vishkambha", "Priti", "Ayushman", "Saubhagya", "Shobhana", "Atiganda", "Sukarma", "Dhriti", "Shula", "Ganda", "Vriddhi",
+  "Dhruva", "Vyaghata", "Harshana", "Vajra", "Siddhi", "Vyatipata", "Variyan", "Parigha", "Shiva", "Siddha", "Sadhya", "Shubha", "Shukla",
+  "Brahma", "Indra", "Vaidhriti"];
+const TITHI_NAMES = ["Pratipada", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashthi", "Saptami", "Ashtami", "Navami", "Dashami",
+  "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi"];
+function avakahadaChakra(c) {
+  const ml = c.lon.Moon, n = J.nakshatraOf(ml), ni = Math.floor(Astro.norm(ml) / J.NAK_SPAN) % 27, ms = c.moonSign, deg = ml % 30;
+  const yoni = YONI[ni], yName = yoni[0].split(" ")[0];
+  const vashya = [ "Chatushpada (quadruped)", "Chatushpada (quadruped)", "Manava (human)", "Jalachara (water)", "Vanachara (wild)", "Manava (human)",
+    "Manava (human)", "Keeta (insect)", deg < 15 ? "Manava (human)" : "Chatushpada (quadruped)", deg < 15 ? "Chatushpada (quadruped)" : "Jalachara (water)",
+    "Manava (human)", "Jalachara (water)"][ms];
+  const el = Astro.norm(c.lon.Moon - c.lon.Sun), ti = Math.floor(el / 12), paksha = ti < 15 ? "Shukla" : "Krishna";
+  const tname = ti === 14 ? "Purnima" : ti === 29 ? "Amavasya" : TITHI_NAMES[ti % 15];
+  const k = Math.floor(el / 6), karana = k === 0 ? "Kimstughna" : k >= 57 ? ["Shakuni", "Chatushpada", "Naga"][k - 57]
+    : ["Bava", "Balava", "Kaulava", "Taitila", "Gara", "Vanija", "Vishti (Bhadra)"][(k - 1) % 7];
+  const mh = c.house.Moon, paya = [1, 6, 11].includes(mh) ? "Swarna (gold)" : [2, 5, 9].includes(mh) ? "Rajat (silver)" : [3, 7, 10].includes(mh) ? "Tamra (copper)" : "Loha (iron)";
+  return {
+    moon_sign: SIGNS[ms], rashi_lord: J.SIGN_LORD[ms], nakshatra: n.name, pada: n.pada, nakshatra_lord: n.lord, nakshatra_deity: n.deity,
+    varna: VARNA[ms % 4], vashya, yoni: `${yoni[0]}, ${yoni[1] === "M" ? "male" : "female"}`, yoni_enemy: YONI_ENEMY[yName],
+    gana: n.gana, nadi: NADI[ni], tatva: TATVA[ms % 4], naam_akshar: AKSHAR[ni][n.pada - 1], all_akshar_of_nakshatra: AKSHAR[ni].join(", "),
+    paya: `${paya} (by Moon in house ${mh}; some calendars use a nakshatra-based paya)`,
+    panchang_at_birth: { tithi: `${paksha} ${tname}`, tithi_number: ti + 1, yoga: YOGA_NAMES[Math.floor(Astro.norm(c.lon.Sun + c.lon.Moon) / J.NAK_SPAN) % 27],
+      karana, vara_lord: c.sun ? c.sun.vara_lord : undefined },
+    note: "Yoni, gana and nadi come from the Moon's nakshatra; varna, vashya and tatva from the Moon's sign (Ashtakoota convention). Gana is not yoni.",
+  };
+}
+function insight(D, c, nowMs = Date.now()) {
     const owners = areaOwners(c);
     const v = vimshottari(c.lon.Moon, c.utc.getTime(), c.settings.dasha_year);
     // planet map
@@ -146,7 +188,8 @@
     // Saturn's sign as body region (Kalapurusha) - a hypothesis to test forward, not an established rule
     const body_watch = { hypothesis: "Injuries/health trouble tend to hit the body region of the sign Saturn is transiting (Kalapurusha: Aries head ... Pisces feet). Unproven: treat as something to test forward, record hits AND misses.",
       saturn: slow_transits.filter(r => r.planet === "Saturn" && !r.is_past).map(r => ({ from: r.from, to: r.to, sign: r.sign, body_region: r.body_region, current: r.is_current })) };
-    Object.assign(D, { planet_map, life_chapters, timeline, slow_transits, upcoming_5y, marital_estimate, significator_breadth, body_watch });
+    const avakahada = avakahadaChakra(c);
+    Object.assign(D, { planet_map, life_chapters, timeline, slow_transits, upcoming_5y, marital_estimate, significator_breadth, body_watch, avakahada });
     return D;
   }
 
